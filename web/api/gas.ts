@@ -2,15 +2,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Doublon logique de ../../api/gas.ts — requis si le Root Directory Vercel est `web`.
 // 1) Purpose:
-// - Proxy Node.js (runtime par défaut Vercel, pas Edge) vers l’URL /exec GAS.
-// - L’Edge peut recevoir un 403 côté Google sans exécuter doPost (aucun log GAS).
+// - Proxy Node.js vers l’URL /exec GAS ; GET de diagnostic pour vérifier que la route n’est pas bloquée (403).
 // 2) Key variables:
 // - `process.env.GAS_WEB_APP_URL` ou `VITE_GAS_WEB_APP_URL` : URL complète /exec.
 // - `req.body` : corps JSON parsé par Vercel quand le client envoie application/json.
 // 3) Logic flow:
-// - Vérif POST → relire l’URL GAS → reconstruire le corps JSON en string → POST text/plain vers GAS → renvoyer la réponse brute.
+// - GET → JSON ping ; POST → relayer le corps (clé `pwd` côté client, GAS lit pwd ou password).
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('X-NaviSphere-Proxy', '1');
+
+  if (req.method === 'GET') {
+    res.status(200).json({ ok: true, ping: true });
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.status(405).json({ ok: false, error: 'METHOD_NOT_ALLOWED' });
     return;

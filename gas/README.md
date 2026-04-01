@@ -36,6 +36,10 @@ Le proxy **`api/gas.ts`** utilise le **runtime Node.js** (`@vercel/node`), pas *
 
 **Build Vercel :** pas de **npm workspaces** entre la racine et `web/` (sinon les binaires optionnels de **Rolldown** / Vite 8 peuvent manquer sur Linux). Le `vercel.json` exécute `npm install` à la racine puis `cd web && npm install` ; `@vercel/node` est déclaré à la racine (pour `api/gas.ts`) et dans `web/package.json` (pour `web/api/gas.ts`).
 
+**Mot de passe sur le réseau :** le client envoie `pwd` (pas la clé `password`) pour limiter les **403** sur **POST** `/api/gas` déclenchés par certains **pare-feu / WAF** (faux positifs sur le mot « password » dans le JSON). Le script GAS doit utiliser `readPassword_(data)` (`password` ou `pwd`) — voir `example/Code.gs`.
+
+**Diagnostic :** ouvre `GET /api/gas` sur ton domaine : réponse JSON `{ ok: true, ping: true }` et en-tête `X-NaviSphere-Proxy: 1` si la fonction serverless répond. Si **GET** est déjà en **403**, vérifie **Vercel → Security** (protection du déploiement, pare-feu).
+
 En **développement local**, Vite proxy `/api/gas` vers cette même URL (voir `web/vite.config.ts`).
 
 Le corps reste en `Content-Type: text/plain` vers GAS, comme dans `example/Code.gs`.

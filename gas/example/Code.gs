@@ -39,9 +39,17 @@ function jsonOutput(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
+// 1) Purpose:
+// - Lire le mot de passe que le client envoie sous `pwd` (proxy / WAF) ou `password` (ancien format).
+// 2) Key variables: `data` = objet JSON du POST.
+// 3) Logic flow: priorité `password`, sinon `pwd`, sinon chaîne vide.
+function readPassword_(data) {
+  return String(data.password || data.pwd || '');
+}
+
 function registerUser_(sheet, data) {
   var alias = String(data.alias || '').trim();
-  var password = String(data.password || '');
+  var password = readPassword_(data);
   if (!alias || !password) return { ok: false, error: 'CHAMPS_MANQUANTS' };
   if (findUserRowIndex_(sheet, alias)) return { ok: false, error: 'ALIAS_EXISTE' };
   var row = [alias, password];
@@ -52,7 +60,7 @@ function registerUser_(sheet, data) {
 
 function loginUser_(sheet, data) {
   var alias = String(data.alias || '').trim();
-  var password = String(data.password || '');
+  var password = readPassword_(data);
   var rowIndex = findUserRowIndex_(sheet, alias);
   if (!rowIndex) return { ok: false, error: 'UTILISATEUR_INCONNU' };
   var row = sheet.getRange(rowIndex, 1, rowIndex, 26).getValues()[0];
@@ -62,7 +70,7 @@ function loginUser_(sheet, data) {
 
 function setFavorites_(sheet, data) {
   var alias = String(data.alias || '').trim();
-  var password = String(data.password || '');
+  var password = readPassword_(data);
   var favorites = data.favorites || [];
   if (!Array.isArray(favorites) || favorites.length > 24) return { ok: false, error: 'LISTE_INVALIDE' };
   var rowIndex = findUserRowIndex_(sheet, alias);

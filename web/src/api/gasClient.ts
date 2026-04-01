@@ -47,18 +47,30 @@ export async function gasFetch<T>(body: Record<string, unknown>): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+// 1) Purpose:
+// - Envoyer le secret sous la clé `pwd` (pas `password`) pour limiter les faux positifs WAF / pare-feu sur POST JSON.
+// 2) Key variables: `payload.password` reste l’API TypeScript côté app ; le réseau transporte `pwd`.
+// 3) Logic flow: construire l’objet JSON avec alias + pwd (+ favorites si besoin) → gasFetch.
 export async function gasRegister(payload: {
   alias: string;
   password: string;
 }): Promise<GasAuthResponse> {
-  return gasFetch<GasAuthResponse>({ action: 'register', ...payload });
+  return gasFetch<GasAuthResponse>({
+    action: 'register',
+    alias: payload.alias,
+    pwd: payload.password,
+  });
 }
 
 export async function gasLogin(payload: {
   alias: string;
   password: string;
 }): Promise<GasAuthResponse> {
-  return gasFetch<GasAuthResponse>({ action: 'login', ...payload });
+  return gasFetch<GasAuthResponse>({
+    action: 'login',
+    alias: payload.alias,
+    pwd: payload.password,
+  });
 }
 
 export async function gasSetFavorites(payload: {
@@ -66,5 +78,10 @@ export async function gasSetFavorites(payload: {
   password: string;
   favorites: string[];
 }): Promise<GasAuthResponse> {
-  return gasFetch<GasAuthResponse>({ action: 'setFavorites', ...payload });
+  return gasFetch<GasAuthResponse>({
+    action: 'setFavorites',
+    alias: payload.alias,
+    pwd: payload.password,
+    favorites: payload.favorites,
+  });
 }
