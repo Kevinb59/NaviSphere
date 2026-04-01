@@ -8,17 +8,28 @@
  * - Soit le script est ouvert depuis le tableur (projet « lié ») : getActiveSpreadsheet() fonctionne.
  * - Soit projet « autonome » : Project settings > Script properties > SPREADSHEET_ID = l’ID dans l’URL du tableur
  *   (entre /d/ et /edit).
+ * - Sinon, valeur par défaut `DEFAULT_SPREADSHEET_ID` ci-dessous (à adapter si tu dupliques le projet).
  */
+
+// 1) Purpose:
+// - ID du classeur par défaut si la propriété du script `SPREADSHEET_ID` n’est pas définie.
+// 2) Key variables: chaîne extraite de l’URL …/spreadsheets/d/CET_ID/edit
+// 3) Logic flow: laisser vide pour forcer uniquement les propriétés du script ou le script lié.
+var DEFAULT_SPREADSHEET_ID = '15GZ3VfO6q_soe7pPML3uV3pKsT1OVS87IoTVvIgdLH0';
 
 // 1) Purpose:
 // - Retourner la première feuille du classeur NaviSphere (celle qui contient Alias | MDP | …).
 // 2) Key variables:
 // - Propriété script `SPREADSHEET_ID` : ID du Google Sheet (prioritaire si défini).
+// - `DEFAULT_SPREADSHEET_ID` : repli si la propriété est absente.
 // 3) Logic flow:
-// - Si SPREADSHEET_ID → openById ; sinon classeur actif (script lié au tableur) ; sinon erreur explicite.
+// - SPREADSHEET_ID (propriété) → openById ; sinon DEFAULT_SPREADSHEET_ID ; sinon classeur actif ; sinon erreur.
 function getSheet_() {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty('SPREADSHEET_ID');
+  if (!id || !String(id).trim()) {
+    id = DEFAULT_SPREADSHEET_ID;
+  }
   if (id && String(id).trim()) {
     return SpreadsheetApp.openById(String(id).trim()).getSheets()[0];
   }

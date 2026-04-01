@@ -48,6 +48,8 @@ Souvent le projet Apps Script est **autonome** (créé depuis script.google.com)
 
 **Alternative :** ouvre **Extensions → Apps Script** **depuis la feuille** (script lié au classeur) : dans ce cas `SPREADSHEET_ID` n’est pas obligatoire.
 
+Dans `example/Code.gs`, **`DEFAULT_SPREADSHEET_ID`** peut contenir ton ID en secours si tu ne veux pas passer par les propriétés du script ; mets-le à `''` si tu publies un fork sans ton classeur.
+
 En **développement local**, Vite proxy `/api/gas` vers cette même URL (voir `web/vite.config.ts`).
 
 Le corps reste en `Content-Type: text/plain` vers GAS, comme dans `example/Code.gs`.
