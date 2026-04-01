@@ -1,0 +1,487 @@
+@import "tailwindcss";
+
+/* 1) Purpose:
+   - Déclarer la police Tesla locale pour l'identité visuelle de la barre supérieure.
+   2) Key variables:
+   - `font-family: 'Tesla'`: nom interne utilisé dans les classes CSS.
+   - `src`: chemin public vers le fichier TTF déplacé dans les assets.
+   3) Logic flow:
+   - Le navigateur charge la police depuis `/public` puis l'applique via la classe `.tesla-wordmark`. */
+@font-face {
+  font-family: 'Tesla';
+  src: url('/assets/fonts/TESLA.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 1) Purpose:
+   - Réinitialiser le canvas pour une interface plein écran type cockpit.
+   2) Key variables:
+   - `html`, `body`, `#root`: conteneurs principaux.
+   3) Logic flow:
+   - On supprime marges/scroll parasites et on force une hauteur viewport stable. */
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* 1) Purpose:
+   - Éviter la sélection accidentelle de texte/éléments pendant les interactions tactile/souris.
+   2) Key variables:
+   - `user-select: none`: bloque la sélection globale.
+   - `-webkit-user-select: none`: compatibilité moteurs WebKit.
+   3) Logic flow:
+   - On interdit la sélection sur l'UI globale, puis on réautorise explicitement
+     la sélection dans les champs de saisie pour conserver l'édition du texte. */
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* 1) Purpose:
+   - Optimiser les interactions tactiles en limitant les délais de gesture sur boutons/liens.
+   2) Key variables:
+   - `touch-action: manipulation`: favorise le tap/clic direct.
+   3) Logic flow:
+   - Les éléments interactifs principaux répondent plus naturellement sur écran tactile. */
+button,
+a {
+  touch-action: manipulation;
+}
+
+/* 1) Purpose:
+   - Appliquer la police Tesla au libellé de marque principal.
+   2) Key variables:
+   - `font-family`: force l'utilisation de Tesla, avec fallback sans-serif.
+   - `letter-spacing`: ajuste le rendu du mot-symbole.
+   3) Logic flow:
+   - Cette classe est posée uniquement sur le texte d'en-tête à personnaliser. */
+.tesla-wordmark {
+  font-family: 'Tesla', sans-serif;
+  letter-spacing: 0.08em;
+}
+
+/* 1) Purpose:
+   - Masquer les barres de scroll tout en conservant le défilement.
+   2) Key variables:
+   - `.no-scrollbar`: classe utilitaire appliquée aux conteneurs scrollables.
+   3) Logic flow:
+   - On neutralise l'affichage des scrollbars pour Firefox, IE/Edge legacy et WebKit. */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* 1) Purpose:
+   - Créer un fondu latéral du dock sans superposer de couleur visible.
+   2) Key variables:
+   - `mask-image`: masque alpha qui garde le centre opaque et adoucit les bords.
+   3) Logic flow:
+   - Le contenu est "masqué" sur les côtés gauche/droite, donc la transition se fait
+     naturellement avec le vrai fond du dock (sans bord dur de dégradé). */
+.dock-edge-fade {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    rgba(0, 0, 0, 1) 26px,
+    rgba(0, 0, 0, 1) calc(100% - 26px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    rgba(0, 0, 0, 1) 26px,
+    rgba(0, 0, 0, 1) calc(100% - 26px),
+    transparent 100%
+  );
+}
+
+/* 1) Purpose:
+   - Adoucir le scroll vertical de l'encart central sans couche couleur visible.
+   2) Key variables:
+   - `mask-image`: masque alpha vertical (haut/bas) appliqué au contenu scrollable.
+   3) Logic flow:
+   - Le masque maintient le centre opaque et fond progressivement en haut/bas,
+     ce qui évite les bords de dégradé non raccordés au fond. */
+.center-scroll-fade {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(0, 0, 0, 1) 30px,
+    rgba(0, 0, 0, 1) calc(100% - 34px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(0, 0, 0, 1) 30px,
+    rgba(0, 0, 0, 1) calc(100% - 34px),
+    transparent 100%
+  );
+}
+
+/* 1) Purpose:
+   - Créer un fond spatial organique avec nuages de gaz subtils et étoiles vivantes.
+   2) Key variables:
+   - `.nebula-layer-a` / `.nebula-layer-b`: nappes de gaz colorées qui évoluent lentement.
+   - `.lightspeed-starfield`: étoiles + mini constellations qui scintillent.
+   3) Logic flow:
+   - Les couches nébuleuses se déplacent et varient d'opacité en boucle douce, pendant
+     que les étoiles apparaissent/disparaissent indépendamment pour éviter un rendu répétitif. */
+.nebula-layer-a,
+.nebula-layer-b {
+  position: absolute;
+  inset: -24%;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* 1) Purpose:
+   - Renforcer la sensation de vitesse avec une lecture "tunnel" plus nette.
+   2) Key variables:
+   - `.speed-edge-aura`: halo lumineux du contour vers l'intérieur.
+   - `.speed-center-vignette`: disque dégradé sombre au centre.
+   3) Logic flow:
+   - Ces deux couches statiques servent de base visuelle continue sur laquelle
+     les particules warp/étoiles passent, pour donner un effet de déplacement vers l'avant. */
+.speed-edge-aura,
+.speed-center-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.speed-edge-aura {
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(171, 218, 255, 0) 50%,
+      rgba(157, 210, 255, 0.09) 72%,
+      rgba(157, 210, 255, 0.2) 100%
+    );
+  mix-blend-mode: screen;
+  opacity: 0.78;
+}
+
+.speed-center-vignette {
+  background:
+    radial-gradient(
+      circle at 50% 52%,
+      rgba(0, 0, 0, 0.62) 0%,
+      rgba(0, 0, 0, 0.44) 24%,
+      rgba(0, 0, 0, 0.14) 44%,
+      rgba(0, 0, 0, 0) 68%
+    );
+  opacity: 0.82;
+}
+
+.nebula-layer-a {
+  background:
+    radial-gradient(circle at 24% 38%, rgba(102, 166, 255, 0.16) 0%, rgba(102, 166, 255, 0) 36%),
+    radial-gradient(circle at 70% 58%, rgba(84, 190, 255, 0.13) 0%, rgba(84, 190, 255, 0) 34%),
+    radial-gradient(circle at 50% 74%, rgba(105, 156, 255, 0.1) 0%, rgba(105, 156, 255, 0) 30%);
+  filter: blur(30px);
+  opacity: 0.16;
+  animation: navisphere-nebula-drift-a 24s ease-in-out infinite;
+}
+
+.nebula-layer-b {
+  background:
+    radial-gradient(circle at 78% 24%, rgba(138, 182, 255, 0.08) 0%, rgba(138, 182, 255, 0) 33%),
+    radial-gradient(circle at 38% 66%, rgba(122, 222, 255, 0.09) 0%, rgba(122, 222, 255, 0) 31%),
+    radial-gradient(circle at 54% 42%, rgba(196, 227, 255, 0.07) 0%, rgba(196, 227, 255, 0) 24%);
+  filter: blur(36px);
+  opacity: 0.11;
+  animation: navisphere-nebula-drift-b 30s ease-in-out infinite;
+}
+
+/* 1) Purpose:
+   - Représenter un ciel d'étoiles non répétitif avec scintillement organique.
+   2) Key variables:
+   - `.lightspeed-starfield`: conteneur des étoiles.
+   - `.lightspeed-star-node`: étoile individuelle animée.
+   3) Logic flow:
+   - Les étoiles sont positionnées aléatoirement depuis React, puis chacune applique
+     une animation de pulsation indépendante pour un rendu naturel. */
+.lightspeed-starfield {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lightspeed-star-node {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(180, 225, 255, 0.5) 52%, rgba(180, 225, 255, 0) 100%);
+  box-shadow:
+    0 0 6px rgba(255, 255, 255, 0.35),
+    0 0 14px rgba(163, 214, 255, 0.2);
+  animation-name: navisphere-star-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+
+/* 1) Purpose:
+   - Ajouter une sensation de déplacement "caméra en avant" (effet warp radial).
+   2) Key variables:
+   - `.lightspeed-warp-track`: fixe la direction radiale depuis le centre.
+   - `.lightspeed-warp-particle`: particule qui accélère vers l'extérieur avec légère croissance.
+   - `--warp-distance`: distance de fuite injectée dynamiquement.
+   3) Logic flow:
+   - Les particules naissent près du centre, accélèrent vers l'extérieur et s'effacent,
+     ce qui donne l'impression qu'on les dépasse en avançant. */
+.lightspeed-warp-track {
+  position: absolute;
+  display: block;
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+.lightspeed-warp-particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  border-radius: 999px;
+  background: rgba(245, 252, 255, 1);
+  box-shadow:
+    0 0 10px rgba(218, 240, 255, 0.95),
+    0 0 22px rgba(180, 228, 255, 0.55);
+  opacity: 0;
+  animation-name: navisphere-warp-out;
+  animation-timing-function: cubic-bezier(0.22, 0.02, 0.15, 1);
+  animation-iteration-count: infinite;
+  transform: translate3d(0, 0, 0) scale(0.55);
+  filter: blur(0px);
+}
+
+/* 1) Purpose:
+   - Simuler des étoiles filantes visibles seulement à certains instants.
+   2) Key variables:
+   - `.lightspeed-meteor`: segment lumineux incliné avec dégradé de traînée.
+   - `animationDuration/Delay`: pilotées depuis React pour désynchroniser les occurrences.
+   3) Logic flow:
+   - La timeline reste majoritairement invisible, puis déclenche brièvement une traversée
+     rapide afin de donner un effet naturel "de temps en temps". */
+.lightspeed-meteor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  height: 2px;
+  border-radius: 999px;
+  opacity: 0;
+  animation-name: navisphere-meteor-run;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+
+/* 1) Purpose:
+   - Assurer l'orientation de la filante indépendamment de son animation.
+   2) Key variables:
+   - `.lightspeed-meteor-track`: applique seulement l'angle de trajectoire.
+   - `.lightspeed-meteor`: se déplace le long de l'axe de la trajectoire.
+   3) Logic flow:
+   - Le track gère la rotation, puis la filante anime sa translation sur cet axe;
+     la traînée reste donc toujours alignée avec le mouvement. */
+.lightspeed-meteor-track {
+  position: absolute;
+  display: block;
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+/* 1) Purpose:
+   - Donner un rendu "point lumineux + traînée" cohérent avec le déplacement.
+   2) Key variables:
+   - `background`: traînée qui s'intensifie vers l'avant (droite).
+   - `::after`: tête lumineuse de la filante.
+   3) Logic flow:
+   - La traînée suit la tête brillante; l'ensemble se translate vers l'avant sur le track. */
+.lightspeed-meteor {
+  background: linear-gradient(
+    90deg,
+    rgba(193, 228, 255, 0) 0%,
+    rgba(193, 228, 255, 0.22) 46%,
+    rgba(193, 228, 255, 0.55) 76%,
+    rgba(231, 246, 255, 0.92) 100%
+  );
+  box-shadow: 0 0 8px rgba(176, 223, 255, 0.42);
+}
+
+.lightspeed-meteor::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: rgba(244, 251, 255, 0.98);
+  box-shadow:
+    0 0 8px rgba(219, 242, 255, 0.95),
+    0 0 16px rgba(179, 226, 255, 0.75);
+}
+
+/* 1) Purpose:
+   - Ajouter un événement "planète" qui traverse le champ visuel depuis le centre.
+   2) Key variables:
+   - `.planet-pass-track`: orientation de la trajectoire.
+   - `.planet-pass-body`: planète avec teinte/taille/distance pilotées par variables CSS.
+   3) Logic flow:
+   - Le track fixe la direction; la planète translate vers l'extérieur, grossit légèrement,
+     puis s'estompe pour simuler un dépassement par la caméra. */
+.planet-pass-track {
+  position: absolute;
+  display: block;
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+.planet-pass-body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--planet-size);
+  height: var(--planet-size);
+  border-radius: 999px;
+  opacity: 0;
+  background-image: var(--planet-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  image-rendering: auto;
+  box-shadow: none;
+  animation-name: navisphere-planet-pass;
+  animation-timing-function: cubic-bezier(0.06, 0.01, 0.05, 1);
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes navisphere-star-twinkle {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scale(0.9);
+  }
+  35% {
+    opacity: 0.72;
+    transform: scale(1.12);
+  }
+  65% {
+    opacity: 0.34;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes navisphere-nebula-drift-a {
+  0%,
+  100% {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+    opacity: 0.24;
+  }
+  35% {
+    transform: translate3d(2%, 1%, 0) scale(1.04);
+    opacity: 0.36;
+  }
+  70% {
+    transform: translate3d(-1%, 2%, 0) scale(1.02);
+    opacity: 0.28;
+  }
+}
+
+@keyframes navisphere-nebula-drift-b {
+  0%,
+  100% {
+    transform: translate3d(2%, -2%, 0) scale(1.01);
+    opacity: 0.18;
+  }
+  40% {
+    transform: translate3d(-2%, 1%, 0) scale(1.05);
+    opacity: 0.3;
+  }
+  75% {
+    transform: translate3d(1%, 2%, 0) scale(1.03);
+    opacity: 0.22;
+  }
+}
+
+@keyframes navisphere-warp-out {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.5);
+    filter: blur(0px);
+  }
+  10% {
+    opacity: 1;
+  }
+  86% {
+    opacity: 0.96;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--warp-distance), 0, 0) scale(1.9);
+    filter: blur(0.7px);
+  }
+}
+
+@keyframes navisphere-meteor-run {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.72);
+  }
+  8% {
+    opacity: 0.95;
+    transform: translate3d(18px, 0, 0) scale(0.9);
+  }
+  76% {
+    opacity: 0.62;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(420px, 0, 0) scale(1.16);
+  }
+}
+
+@keyframes navisphere-planet-pass {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.45);
+    filter: blur(0px);
+  }
+  10% {
+    opacity: 0.92;
+    filter: blur(0px);
+  }
+  86% {
+    opacity: 0.88;
+    filter: blur(0px);
+  }
+  96% {
+    opacity: 0.84;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--planet-travel), 0, 0) scale(10);
+    filter: blur(0px);
+  }
+}

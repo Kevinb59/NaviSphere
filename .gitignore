@@ -1,0 +1,21 @@
+# Dépendances & build
+web/node_modules/
+web/dist/
+
+# Variables d'environnement (Vercel / local)
+.env
+.env.local
+.env.*.local
+web/.env
+web/.env.local
+
+# Google Apps Script — copies locales, clasp, secrets (les exemples restent dans gas/example/)
+gas/private/
+gas/.clasp.json
+gas/node_modules/
+*.secret.json
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+*.log
