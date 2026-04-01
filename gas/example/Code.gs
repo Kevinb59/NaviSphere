@@ -18,7 +18,7 @@
 // - ID du classeur par défaut si la propriété du script `SPREADSHEET_ID` n’est pas définie.
 // 2) Key variables: chaîne extraite de l’URL …/spreadsheets/d/CET_ID/edit
 // 3) Logic flow: laisser vide pour forcer uniquement les propriétés du script ou le script lié.
-var DEFAULT_SPREADSHEET_ID = '15GZ3VfO6q_soe7pPML3uV3pKsT1OVS87IoTVvIgdLH0';
+var DEFAULT_SPREADSHEET_ID = '12pAYay6Wbf9t-ZvMQefLC4nY9x0cDrzff0FAElOlKZ4';
 
 // 1) Purpose:
 // - Retourner la première feuille du classeur NaviSphere (celle qui contient Alias | MDP | …).
