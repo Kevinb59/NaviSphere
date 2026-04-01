@@ -131,3 +131,37 @@ export async function gasSetFavorites(payload: {
     favorites: payload.favorites,
   });
 }
+
+// 1) Purpose:
+// - Première colonne App* vide côté Sheet (addFavorite côté GAS) ; ordre dock = colonnes C→Z sans trou.
+// 2) Key variables: `favoriteName` = nom du service catalogue.
+// 3) Logic flow: POST action addFavorite → réponse { ok, favorites }.
+export async function gasAddFavorite(payload: {
+  alias: string;
+  password: string;
+  favoriteName: string;
+}): Promise<GasAuthResponse> {
+  return gasFetch<GasAuthResponse>({
+    action: 'addFavorite',
+    alias: payload.alias,
+    pwd: payload.password,
+    favoriteName: payload.favoriteName,
+  });
+}
+
+// 1) Purpose:
+// - Suppression d’un favori avec décalage des colonnes à droite vers la gauche (pas de cellule vide au milieu).
+// 2) Key variables: `favoriteName` = nom exact à retirer.
+// 3) Logic flow: POST action removeFavorite → { ok, favorites }.
+export async function gasRemoveFavorite(payload: {
+  alias: string;
+  password: string;
+  favoriteName: string;
+}): Promise<GasAuthResponse> {
+  return gasFetch<GasAuthResponse>({
+    action: 'removeFavorite',
+    alias: payload.alias,
+    pwd: payload.password,
+    favoriteName: payload.favoriteName,
+  });
+}

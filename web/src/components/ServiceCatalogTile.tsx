@@ -1,7 +1,7 @@
 import { useLongPress } from '../hooks/useLongPress';
 
 // 1) Purpose:
-// - Tuile service dans les panneaux centraux : clic court = navigation, appui long = ajout favoris.
+// - Tuile service dans les panneaux centraux : clic court = navigation, appui long ~1,2 s = ajout favoris.
 // 2) Key variables:
 // - `service`: nom, domaine, lien; `onLongPressIntent`: ouverture du modal de confirmation côté parent.
 // 3) Logic flow:
@@ -21,7 +21,7 @@ type ServiceCatalogTileProps = {
 
 export function ServiceCatalogTile({ service, logoUrl, onLongPressIntent }: ServiceCatalogTileProps) {
   const longPress = useLongPress({
-    durationMs: 2000,
+    durationMs: 1200,
     onLongPress: onLongPressIntent,
   });
 

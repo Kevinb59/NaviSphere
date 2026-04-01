@@ -19,8 +19,10 @@ import {
 } from 'lucide-react';
 import {
   formatGasAuthMessage,
+  gasAddFavorite,
   gasLogin,
   gasRegister,
+  gasRemoveFavorite,
   gasSetFavorites,
   isGasConfigured,
 } from './api/gasClient';
@@ -764,11 +766,11 @@ export default function TeslaFuturisticPortalConcept() {
   };
 
   // 1) Purpose:
-  // - Persister la liste de favoris (Sheet via GAS ou copie locale sans URL GAS).
+  // - Persister la liste complète (réordonnancement dock) : écrit l’ordre dense dans App1…App24.
   // 2) Key variables:
-  // - `names`: jusqu'à 24 entrées, ordre = colonnes App1…App24.
+  // - `names`: jusqu'à 24 entrées, ordre = colonnes App1…App24 (sans trous).
   // 3) Logic flow:
-  // - Appel `setFavorites` côté script ou `saveLocalFavorites` pour le mode hors backend.
+  // - `setFavorites` GAS ; pour ajout / suppression unitaire, utiliser `gasAddFavorite` / `gasRemoveFavorite`.
   const persistFavorites = useCallback(
     async (names: string[]) => {
       if (!sessionCredentials) return;
@@ -912,9 +914,33 @@ export default function TeslaFuturisticPortalConcept() {
   // - Mise à jour d'état puis `persistFavorites` asynchrone.
   const confirmFavoriteAdd = useCallback(async () => {
     if (!favoritePendingName || !sessionCredentials) return;
-    const next = [...favoriteOrder, favoritePendingName];
+    const name = favoritePendingName;
     setFavoritePendingName(null);
-    await persistFavorites(next);
+    if (isGasConfigured()) {
+      try {
+        const res = await gasAddFavorite({
+          alias: sessionCredentials.alias,
+          password: sessionCredentials.password,
+          favoriteName: name,
+        });
+        if (!res.ok) {
+          if (res.error === 'FAVORI_DEJA_PRESENT') {
+            setAuthFormError('Ce favori est déjà dans le dock.');
+          } else if (res.error === 'DOCK_PLEIN') {
+            setAuthFormError('Dock plein (24 favoris maximum).');
+          } else {
+            setAuthFormError(formatGasAuthMessage(res.error, 'register'));
+          }
+          return;
+        }
+        setFavoriteOrder(res.favorites);
+        saveLocalFavorites(sessionCredentials.alias, res.favorites);
+      } catch (err) {
+        setAuthFormError(err instanceof Error ? err.message : 'Erreur réseau.');
+      }
+      return;
+    }
+    await persistFavorites([...favoriteOrder, name]);
   }, [favoriteOrder, favoritePendingName, persistFavorites, sessionCredentials]);
 
   // 1) Purpose:
@@ -925,10 +951,31 @@ export default function TeslaFuturisticPortalConcept() {
   // - Persistance via `persistFavorites` (met à jour l'état).
   const handleRemoveFavoriteFromDock = useCallback(
     async (name: string) => {
+      if (!sessionCredentials) return;
+      if (isGasConfigured()) {
+        try {
+          const res = await gasRemoveFavorite({
+            alias: sessionCredentials.alias,
+            password: sessionCredentials.password,
+            favoriteName: name,
+          });
+          if (!res.ok) {
+            setAuthFormError(
+              res.error === 'FAVORI_ABSENT' ? 'Favori introuvable.' : formatGasAuthMessage(res.error, 'login'),
+            );
+            return;
+          }
+          setFavoriteOrder(res.favorites);
+          saveLocalFavorites(sessionCredentials.alias, res.favorites);
+        } catch (err) {
+          setAuthFormError(err instanceof Error ? err.message : 'Erreur réseau.');
+        }
+        return;
+      }
       const next = favoriteOrder.filter((n) => n !== name);
       await persistFavorites(next);
     },
-    [favoriteOrder, persistFavorites],
+    [favoriteOrder, persistFavorites, sessionCredentials],
   );
 
   // 1) Purpose:
@@ -1466,7 +1513,7 @@ export default function TeslaFuturisticPortalConcept() {
                     <div className="rounded-[14px] bg-white/[0.055] px-4 py-3 text-sm text-white/60 ring-1 ring-white/10">
                       {normalizedQuery
                         ? 'Aucun favori ne correspond à cette recherche.'
-                        : 'Ajoutez des favoris : appui long (2 s) sur une app dans les menus latéraux, puis confirmez.'}
+                        : 'Ajoutez des favoris : appui long (~1,2 s) sur une app dans les menus latéraux, puis confirmez.'}
                     </div>
                   )}
                 </div>
@@ -1749,7 +1796,7 @@ export default function TeslaFuturisticPortalConcept() {
               </h3>
               <ul className="mt-4 list-inside list-disc space-y-2 text-sm leading-relaxed text-white/70">
                 <li>
-                  Appui long (~2 s) sur une app dans les menus latéraux pour proposer l’ajout aux favoris.
+                  Appui long (~1,2 s) sur une app dans les menus latéraux pour proposer l’ajout aux favoris.
                 </li>
                 <li>
                   Le dock affiche vos favoris. Appui long sur une tuile du dock pour le mode édition

@@ -54,6 +54,8 @@ Dans `example/Code.gs`, **`DEFAULT_SPREADSHEET_ID`** peut contenir ton ID en sec
 
 **Côté site web :** l’alias et le mot de passe sont aussi stockés dans **`sessionStorage`** du navigateur (session courante). Les favoris peuvent être dupliqués dans **`localStorage`** (`navisphere_favs_<alias>`) en secours si le proxy `/api/gas` ou GAS répond parfois en HTML au lieu de JSON.
 
+**Actions GAS (favoris) :** `addFavorite` remplit la **première colonne App* vide** ; `removeFavorite` retire une app et **décale** les colonnes suivantes vers la gauche ; `setFavorites` réécrit tout l’ordre (glisser-déposer dans le dock). L’ordre affiché = colonnes **C → Z** sans trous.
+
 En **développement local**, Vite proxy `/api/gas` vers cette même URL (voir `web/vite.config.ts`).
 
 Le corps reste en `Content-Type: text/plain` vers GAS, comme dans `example/Code.gs`.

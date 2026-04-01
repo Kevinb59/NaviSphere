@@ -48,7 +48,7 @@ function getSheet_() {
 // 1) Purpose:
 // - Point d'entrée HTTP POST (JSON dans postData.contents).
 // 2) Key variables:
-// - `data.action`: register | login | setFavorites
+// - `data.action`: register | login | setFavorites | addFavorite | removeFavorite
 // 3) Logic flow:
 // - Parse JSON, route vers la fonction métier, renvoie du JSON (MIME JSON).
 function doPost(e) {
@@ -66,6 +66,12 @@ function doPost(e) {
     }
     if (action === 'setFavorites') {
       return jsonOutput(setFavorites_(sheet, data));
+    }
+    if (action === 'addFavorite') {
+      return jsonOutput(addFavorite_(sheet, data));
+    }
+    if (action === 'removeFavorite') {
+      return jsonOutput(removeFavorite_(sheet, data));
     }
     return jsonOutput({ ok: false, error: 'ACTION_INCONNUE' });
   } catch (err) {
@@ -123,6 +129,70 @@ function setFavorites_(sheet, data) {
   }
   sheet.getRange(rowIndex, 1, rowIndex, 26).setValues([newRow]);
   return { ok: true, favorites: readFavoritesFromRow_(newRow) };
+}
+
+// 1) Purpose:
+// - Ajouter un favori dans la première colonne App* vide (C→Z) pour la ligne utilisateur.
+// 2) Key variables: `data.favoriteName` = nom du service (identique au catalogue).
+// 3) Logic flow: vérif MDP → pas de doublon → première cellule vide parmi colonnes 3–26 → écriture → liste compactée.
+function addFavorite_(sheet, data) {
+  var alias = String(data.alias || '').trim();
+  var password = readPassword_(data);
+  var favoriteName = String(data.favoriteName || '').trim();
+  if (!favoriteName) return { ok: false, error: 'CHAMPS_MANQUANTS' };
+  var rowIndex = findUserRowIndex_(sheet, alias);
+  if (!rowIndex) return { ok: false, error: 'UTILISATEUR_INCONNU' };
+  var row = sheet.getRange(rowIndex, 1, rowIndex, 26).getValues()[0];
+  if (String(row[1]) !== password) return { ok: false, error: 'MOT_DE_PASSE_INVALIDE' };
+  var lower = favoriteName.toLowerCase();
+  for (var d = 0; d < 24; d++) {
+    if (String(row[2 + d]).trim().toLowerCase() === lower) {
+      return { ok: false, error: 'FAVORI_DEJA_PRESENT' };
+    }
+  }
+  for (var j = 0; j < 24; j++) {
+    var cell = row[2 + j];
+    if (!cell || !String(cell).trim()) {
+      sheet.getRange(rowIndex, 3 + j).setValue(favoriteName);
+      var newRow = sheet.getRange(rowIndex, 1, rowIndex, 26).getValues()[0];
+      return { ok: true, favorites: readFavoritesFromRow_(newRow) };
+    }
+  }
+  return { ok: false, error: 'DOCK_PLEIN' };
+}
+
+// 1) Purpose:
+// - Retirer un favori et décaler les colonnes suivantes vers la gauche (pas de trou entre App1…App24).
+// 2) Key variables: `data.favoriteName` = nom exact à retirer.
+// 3) Logic flow: vérif MDP → trouver l’index → décalage → dernière colonne vidée → liste retournée.
+function removeFavorite_(sheet, data) {
+  var alias = String(data.alias || '').trim();
+  var password = readPassword_(data);
+  var favoriteName = String(data.favoriteName || '').trim();
+  if (!favoriteName) return { ok: false, error: 'CHAMPS_MANQUANTS' };
+  var rowIndex = findUserRowIndex_(sheet, alias);
+  if (!rowIndex) return { ok: false, error: 'UTILISATEUR_INCONNU' };
+  var row = sheet.getRange(rowIndex, 1, rowIndex, 26).getValues()[0];
+  if (String(row[1]) !== password) return { ok: false, error: 'MOT_DE_PASSE_INVALIDE' };
+  var idx = -1;
+  for (var i = 0; i < 24; i++) {
+    if (String(row[2 + i]).trim() === favoriteName) {
+      idx = i;
+      break;
+    }
+  }
+  if (idx < 0) return { ok: false, error: 'FAVORI_ABSENT' };
+  for (var k = idx; k < 23; k++) {
+    row[2 + k] = row[2 + k + 1];
+  }
+  row[25] = '';
+  var out = [];
+  for (var c = 0; c < 26; c++) {
+    var v = row[c];
+    out.push(v !== undefined && v !== null && String(v) !== '' ? v : '');
+  }
+  sheet.getRange(rowIndex, 1, rowIndex, 26).setValues([out]);
+  return { ok: true, favorites: readFavoritesFromRow_(row) };
 }
 
 function findUserRowIndex_(sheet, alias) {

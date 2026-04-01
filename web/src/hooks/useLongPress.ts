@@ -3,7 +3,7 @@ import { useCallback, useRef } from 'react';
 // 1) Purpose:
 // - Détecter un appui long (pointer) sans déclencher l'action court clic.
 // 2) Key variables:
-// - `durationMs`: seuil (ex. 2000 ms).
+// - `durationMs`: seuil (ex. 1200 ms).
 // - `longPressTriggered`: évite d'exécuter le clic après un long press.
 // 3) Logic flow:
 // - `pointerdown` démarre un timeout; `pointerup`/`leave`/`cancel` l'annulent; le timeout appelle `onLongPress`.

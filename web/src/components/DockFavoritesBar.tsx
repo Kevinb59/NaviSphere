@@ -22,7 +22,7 @@ import { useLongPress } from '../hooks/useLongPress';
 // 2) Key variables:
 // - `apps`: tuiles résolues dans l'ordre utilisateur; `editMode`: affiche croix + drag.
 // 3) Logic flow:
-// - Hors édition : clic = lien; appui long 2 s = `onEnterEditMode`. En édition : croix supprime, drag réordonne.
+// - Hors édition : clic = lien; appui long ~1,2 s = `onEnterEditMode`. En édition : croix supprime, drag réordonne.
 
 export type CatalogTile = { name: string; domain: string; href: string; icon: LucideIcon };
 
@@ -53,7 +53,7 @@ function SortableDockTile({
   };
 
   const longPress = useLongPress({
-    durationMs: 2000,
+    durationMs: 1200,
     onLongPress: () => {
       if (!editMode) onEnterEditMode();
     },
