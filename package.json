@@ -1,7 +1,6 @@
 {
   "name": "navisphere",
   "private": true,
-  "workspaces": ["web"],
   "dependencies": {
     "@vercel/node": "^3.2.0"
   }
