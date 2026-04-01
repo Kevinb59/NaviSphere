@@ -346,15 +346,31 @@ export default function TeslaFuturisticPortalConcept() {
     const mdp = sessionStorage.getItem('navisphere_mdp');
     if (!alias || !mdp) return;
     if (isGasConfigured()) {
-      void gasLogin({ alias, password: mdp }).then((res) => {
-        if (res.ok) {
+      void gasLogin({ alias, password: mdp })
+        .then((res) => {
+          if (res.ok) {
+            setSessionCredentials({ alias, password: mdp });
+            // 1) Purpose:
+            // - Si le Sheet est vide côté GAS mais que le navigateur a encore des favoris locaux (échec intermittent du proxy), afficher les locaux.
+            // 2) Key variables: `res.favorites` (serveur) vs `loadLocalFavorites(alias)`.
+            // 3) Logic flow: priorité au serveur s’il a des entrées ; sinon repli localStorage.
+            const fromServer = res.favorites;
+            setFavoriteOrder(
+              fromServer && fromServer.length > 0 ? fromServer : loadLocalFavorites(alias),
+            );
+          } else {
+            sessionStorage.removeItem('navisphere_alias');
+            sessionStorage.removeItem('navisphere_mdp');
+          }
+        })
+        .catch(() => {
+          // 1) Purpose:
+          // - Réseau / HTML au lieu de JSON : garder la session et les favoris locaux pour continuer à utiliser l’app.
+          // 2) Key variables: `alias` / `mdp` depuis sessionStorage (déjà validés).
+          // 3) Logic flow: session restaurée + favoris locaux uniquement jusqu’à ce que GAS réponde à nouveau.
           setSessionCredentials({ alias, password: mdp });
-          setFavoriteOrder(res.favorites);
-        } else {
-          sessionStorage.removeItem('navisphere_alias');
-          sessionStorage.removeItem('navisphere_mdp');
-        }
-      });
+          setFavoriteOrder(loadLocalFavorites(alias));
+        });
     } else {
       setSessionCredentials({ alias, password: mdp });
       setFavoriteOrder(loadLocalFavorites(alias));
@@ -759,17 +775,27 @@ export default function TeslaFuturisticPortalConcept() {
       const trimmed = names.slice(0, 24);
       setFavoriteOrder(trimmed);
       if (isGasConfigured()) {
-        const res = await gasSetFavorites({
-          alias: sessionCredentials.alias,
-          password: sessionCredentials.password,
-          favorites: trimmed,
-        });
-        if (!res.ok) {
-          setAuthFormError('Erreur de sauvegarde des favoris.');
+        try {
+          const res = await gasSetFavorites({
+            alias: sessionCredentials.alias,
+            password: sessionCredentials.password,
+            favorites: trimmed,
+          });
+          if (!res.ok) {
+            saveLocalFavorites(sessionCredentials.alias, trimmed);
+            setAuthFormError('Sauvegarde serveur impossible : favoris enregistrés localement sur cet appareil.');
+            return;
+          }
+          setFavoriteOrder(res.favorites);
+          saveLocalFavorites(sessionCredentials.alias, res.favorites);
+          return;
+        } catch (err) {
+          saveLocalFavorites(sessionCredentials.alias, trimmed);
+          setAuthFormError(
+            err instanceof Error ? err.message : 'Erreur réseau : favoris enregistrés localement.',
+          );
           return;
         }
-        setFavoriteOrder(res.favorites);
-        return;
       }
       saveLocalFavorites(sessionCredentials.alias, trimmed);
     },
@@ -795,7 +821,12 @@ export default function TeslaFuturisticPortalConcept() {
         sessionStorage.setItem('navisphere_alias', loginAlias.trim());
         sessionStorage.setItem('navisphere_mdp', loginPassword);
         setSessionCredentials({ alias: loginAlias.trim(), password: loginPassword });
-        setFavoriteOrder(res.favorites);
+        const fromServer = res.favorites;
+        setFavoriteOrder(
+          fromServer && fromServer.length > 0
+            ? fromServer
+            : loadLocalFavorites(loginAlias.trim()),
+        );
         closeAuthModal();
         return;
       }

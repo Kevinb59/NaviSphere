@@ -72,7 +72,25 @@ export async function gasFetch<T>(body: Record<string, unknown>): Promise<T> {
   });
 
   const text = await response.text();
-  return JSON.parse(text) as T;
+  const trimmed = text.trim();
+
+  // 1) Purpose:
+  // - Éviter JSON.parse sur du HTML (SPA index.html, 403/502 Vercel) → erreur « Unexpected token '<' ».
+  // 2) Key variables: `trimmed` = corps texte de la réponse.
+  // 3) Logic flow: si ça ressemble à du HTML → message explicite ; sinon parse JSON.
+  if (trimmed.startsWith('<') || trimmed.startsWith('<!')) {
+    throw new Error(
+      'Le serveur a renvoyé une page HTML au lieu de JSON (souvent /api/gas indisponible ou cache Vercel). Réessaie dans quelques secondes.',
+    );
+  }
+
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    throw new Error(
+      `Réponse invalide (pas du JSON). HTTP ${response.status}. Début : ${trimmed.slice(0, 60)}…`,
+    );
+  }
 }
 
 // 1) Purpose:

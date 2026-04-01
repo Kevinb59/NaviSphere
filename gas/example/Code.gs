@@ -9,6 +9,9 @@
  * - Soit projet « autonome » : Project settings > Script properties > SPREADSHEET_ID = l’ID dans l’URL du tableur
  *   (entre /d/ et /edit).
  * - Sinon, valeur par défaut `DEFAULT_SPREADSHEET_ID` ci-dessous (à adapter si tu dupliques le projet).
+ *
+ * Important : les lignes utilisateur sont écrites dans la **première feuille** du classeur (`getSheets()[0]`).
+ * Si tu ne vois rien, vérifie que l’onglet tout à gauche contient bien les colonnes Alias | MDP | …
  */
 
 // 1) Purpose:

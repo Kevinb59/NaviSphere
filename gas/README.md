@@ -50,6 +50,10 @@ Souvent le projet Apps Script est **autonome** (créé depuis script.google.com)
 
 Dans `example/Code.gs`, **`DEFAULT_SPREADSHEET_ID`** peut contenir ton ID en secours si tu ne veux pas passer par les propriétés du script ; mets-le à `''` si tu publies un fork sans ton classeur.
 
+**Où sont les données ?** Le script écrit dans **la première feuille** du classeur (premier onglet à gauche). Si tu regardes un autre onglet, la feuille semblera « vide ».
+
+**Côté site web :** l’alias et le mot de passe sont aussi stockés dans **`sessionStorage`** du navigateur (session courante). Les favoris peuvent être dupliqués dans **`localStorage`** (`navisphere_favs_<alias>`) en secours si le proxy `/api/gas` ou GAS répond parfois en HTML au lieu de JSON.
+
 En **développement local**, Vite proxy `/api/gas` vers cette même URL (voir `web/vite.config.ts`).
 
 Le corps reste en `Content-Type: text/plain` vers GAS, comme dans `example/Code.gs`.
