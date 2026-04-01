@@ -1,9 +1,9 @@
 // 1) Purpose:
-// - Appeler l'application Web Google Apps Script (POST JSON en text/plain pour limiter les soucis CORS).
+// - Appeler GAS via le proxy `/api/gas` (même origine) pour éviter le blocage CORS navigateur → script.google.com.
 // 2) Key variables:
-// - `GAS_URL`: URL `/exec` définie dans l'environnement Vite.
+// - `VITE_GAS_WEB_APP_URL` : utilisée pour `isGasConfigured` et pour le proxy de dev Vite (pas pour fetch direct en prod).
 // 3) Logic flow:
-// - `gasFetch` sérialise le corps, parse la réponse JSON, propage les erreurs réseau.
+// - `gasFetch` POST sur `/api/gas` (ou proxy local en dev) ; le serveur relaie vers l’URL GAS.
 
 export type GasAuthResponse = { ok: true; favorites: string[] } | { ok: false; error: string };
 
@@ -16,15 +16,25 @@ export function isGasConfigured(): boolean {
   return Boolean(getGasUrl());
 }
 
+// 1) Purpose:
+// - Construire le chemin `/api/gas` (ou `/base/api/gas`) pour le proxy même-origine.
+// 2) Key variables:
+// - `import.meta.env.BASE_URL` : préfixe Vite si déploiement sous sous-chemin.
+// 3) Logic flow:
+// - Préfixe sans double slash ; toujours relatif au site pour éviter CORS.
+function getGasProxyUrl(): string {
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const prefix = baseUrl === '/' ? '' : baseUrl.replace(/\/$/, '');
+  return `${prefix}/api/gas`.replace(/\/+/g, '/');
+}
+
 export async function gasFetch<T>(body: Record<string, unknown>): Promise<T> {
-  const url = getGasUrl();
-  if (!url) {
+  if (!getGasUrl()) {
     throw new Error('VITE_GAS_WEB_APP_URL non configurée (voir web/.env.example).');
   }
 
-  const response = await fetch(url, {
+  const response = await fetch(getGasProxyUrl(), {
     method: 'POST',
-    mode: 'cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(body),
   });

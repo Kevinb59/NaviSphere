@@ -22,6 +22,14 @@ Ce dossier documente le backend **Google Apps Script** lié à votre feuille Goo
 
 Les mots de passe sont stockés **en clair** dans la feuille : convenable pour un prototype, pas pour des données sensibles. Prévoyez un hachage côté script ou un autre backend si besoin.
 
-## CORS
+## CORS et proxy Vercel
 
-Le client envoie le corps en `Content-Type: text/plain` pour limiter les problèmes de préflight avec les Web Apps GAS.
+Les navigateurs **bloquent** les appels directs depuis ton site (ex. `*.vercel.app`) vers `script.google.com` : il manque l’en-tête `Access-Control-Allow-Origin` sur la réponse GAS.
+
+Le frontend appelle donc **`/api/gas`** sur **le même domaine** que le site ; la fonction serverless **`api/gas.ts`** (à la **racine du dépôt Git**, à côté de `web/`) relaie la requête vers l’URL `/exec`. Sur Vercel, définis **`VITE_GAS_WEB_APP_URL`** (ou **`GAS_WEB_APP_URL`**) avec l’URL `/exec` — le proxy lit ces variables côté serveur.
+
+**Important :** le dépôt contient **`api/gas.ts`** (racine) et **`web/api/gas.ts`** (doublon). Si Vercel a **Root Directory** = racine du repo, c’est la première qui est utilisée ; si la racine est **`web`** (souvent auto-détecté pour Vite), seule **`web/api/gas.ts`** est déployée — les deux fichiers sont alignés pour couvrir les deux cas.
+
+En **développement local**, Vite proxy `/api/gas` vers cette même URL (voir `web/vite.config.ts`).
+
+Le corps reste en `Content-Type: text/plain` vers GAS, comme dans `example/Code.gs`.
