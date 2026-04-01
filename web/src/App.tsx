@@ -207,6 +207,17 @@ const ALL_CATALOG_SERVICES = [
   ...chargingServices,
 ];
 
+// 1) Purpose:
+// - Associer une entrée Sheet (`favoriteKey`) au métadonnées catalogue (domaine, libellé) même si la casse diffère.
+// 2) Key variables: `favoriteKey` = texte exact côté API ; retour = entrée catalogue ou undefined.
+// 3) Logic flow: égalité stricte d’abord, puis comparaison insensible à la casse.
+function resolveCatalogEntryForFavoriteKey(favoriteKey: string) {
+  const exact = ALL_CATALOG_SERVICES.find((s) => s.name === favoriteKey);
+  if (exact) return exact;
+  const lower = favoriteKey.toLowerCase();
+  return ALL_CATALOG_SERVICES.find((s) => s.name.toLowerCase() === lower);
+}
+
 const rightMenuItems = [
   { title: 'Recharge', icon: BatteryCharging },
   { title: 'Navigation', icon: Compass },
@@ -300,6 +311,7 @@ export default function TeslaFuturisticPortalConcept() {
   const [dockEditMode, setDockEditMode] = useState(false);
   const [favoritePendingName, setFavoritePendingName] = useState<string | null>(null);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [dockBannerMessage, setDockBannerMessage] = useState('');
 
   const isLoggedIn = sessionCredentials !== null;
 
@@ -547,18 +559,25 @@ export default function TeslaFuturisticPortalConcept() {
     );
   };
 
-  const filteredFavoriteDockApps = useMemo(() => {
-    return favoriteOrder
-      .map((name) => ALL_CATALOG_SERVICES.find((s) => s.name === name))
-      .filter((app): app is (typeof dockApps)[number] => {
-        if (!app) return false;
-        if (!normalizedQuery) return true;
-        return (
-          app.name.toLowerCase().includes(normalizedQuery) ||
-          app.domain.toLowerCase().includes(normalizedQuery)
-        );
-      });
-  }, [favoriteOrder, normalizedQuery]);
+  // 1) Purpose:
+  // - Dock : une tuile par entrée `favoriteOrder` ; `favoriteKey` = chaîne Sheet exacte pour remove / setFavorites.
+  // 2) Key variables: résolution catalogue (casse) + repli visuel si service inconnu.
+  // 3) Logic flow: `resolveCatalogEntryForFavoriteKey` → domaine/icône ; sinon tuile générique avec le texte Sheet.
+  const favoriteDockApps = useMemo(() => {
+    return favoriteOrder.map((favoriteKey) => {
+      const found = resolveCatalogEntryForFavoriteKey(favoriteKey);
+      if (found) {
+        return { ...found, favoriteKey, name: found.name };
+      }
+      return {
+        favoriteKey,
+        name: favoriteKey,
+        domain: 'google.com',
+        href: 'https://www.google.com/',
+        icon: Film,
+      };
+    });
+  }, [favoriteOrder]);
   const sortedStreamingServices = sortServicesByName(filteredStreamingServices);
   const sortedMusicServices = sortServicesByName(filteredMusicServices);
   const sortedGameServices = sortServicesByName(filteredGameServices);
@@ -776,6 +795,7 @@ export default function TeslaFuturisticPortalConcept() {
       if (!sessionCredentials) return;
       const trimmed = names.slice(0, 24);
       setFavoriteOrder(trimmed);
+      setDockBannerMessage('');
       if (isGasConfigured()) {
         try {
           const res = await gasSetFavorites({
@@ -785,7 +805,9 @@ export default function TeslaFuturisticPortalConcept() {
           });
           if (!res.ok) {
             saveLocalFavorites(sessionCredentials.alias, trimmed);
-            setAuthFormError('Sauvegarde serveur impossible : favoris enregistrés localement sur cet appareil.');
+            setDockBannerMessage(
+              'Sauvegarde serveur impossible : favoris enregistrés localement sur cet appareil.',
+            );
             return;
           }
           setFavoriteOrder(res.favorites);
@@ -793,7 +815,7 @@ export default function TeslaFuturisticPortalConcept() {
           return;
         } catch (err) {
           saveLocalFavorites(sessionCredentials.alias, trimmed);
-          setAuthFormError(
+          setDockBannerMessage(
             err instanceof Error ? err.message : 'Erreur réseau : favoris enregistrés localement.',
           );
           return;
@@ -925,18 +947,19 @@ export default function TeslaFuturisticPortalConcept() {
         });
         if (!res.ok) {
           if (res.error === 'FAVORI_DEJA_PRESENT') {
-            setAuthFormError('Ce favori est déjà dans le dock.');
+            setDockBannerMessage('Ce favori est déjà dans le dock.');
           } else if (res.error === 'DOCK_PLEIN') {
-            setAuthFormError('Dock plein (24 favoris maximum).');
+            setDockBannerMessage('Dock plein (24 favoris maximum).');
           } else {
-            setAuthFormError(formatGasAuthMessage(res.error, 'register'));
+            setDockBannerMessage(formatGasAuthMessage(res.error, 'register'));
           }
           return;
         }
         setFavoriteOrder(res.favorites);
         saveLocalFavorites(sessionCredentials.alias, res.favorites);
+        setDockBannerMessage('');
       } catch (err) {
-        setAuthFormError(err instanceof Error ? err.message : 'Erreur réseau.');
+        setDockBannerMessage(err instanceof Error ? err.message : 'Erreur réseau.');
       }
       return;
     }
@@ -946,33 +969,34 @@ export default function TeslaFuturisticPortalConcept() {
   // 1) Purpose:
   // - Retirer un favori depuis le mode édition du dock.
   // 2) Key variables:
-  // - Filtrage de `favoriteOrder` par nom.
+  // - `favoriteKey` = même chaîne que dans `favoriteOrder` / cellules Sheet (voir `DockFavoriteTile.favoriteKey`).
   // 3) Logic flow:
-  // - Persistance via `persistFavorites` (met à jour l'état).
+  // - GAS `removeFavorite` ou filtrage local puis `persistFavorites`.
   const handleRemoveFavoriteFromDock = useCallback(
-    async (name: string) => {
+    async (favoriteKey: string) => {
       if (!sessionCredentials) return;
       if (isGasConfigured()) {
         try {
           const res = await gasRemoveFavorite({
             alias: sessionCredentials.alias,
             password: sessionCredentials.password,
-            favoriteName: name,
+            favoriteName: favoriteKey,
           });
           if (!res.ok) {
-            setAuthFormError(
+            setDockBannerMessage(
               res.error === 'FAVORI_ABSENT' ? 'Favori introuvable.' : formatGasAuthMessage(res.error, 'login'),
             );
             return;
           }
           setFavoriteOrder(res.favorites);
           saveLocalFavorites(sessionCredentials.alias, res.favorites);
+          setDockBannerMessage('');
         } catch (err) {
-          setAuthFormError(err instanceof Error ? err.message : 'Erreur réseau.');
+          setDockBannerMessage(err instanceof Error ? err.message : 'Erreur réseau.');
         }
         return;
       }
-      const next = favoriteOrder.filter((n) => n !== name);
+      const next = favoriteOrder.filter((n) => n !== favoriteKey);
       await persistFavorites(next);
     },
     [favoriteOrder, persistFavorites, sessionCredentials],
@@ -990,6 +1014,17 @@ export default function TeslaFuturisticPortalConcept() {
     },
     [persistFavorites],
   );
+
+  // 1) Purpose:
+  // - Quitter le mode édition du dock en renvoyant l’ordre actuel au Sheet (sync explicite au clic « Terminé »).
+  // 2) Key variables: `favoriteOrder` = ordre affiché après glisser-déposer.
+  // 3) Logic flow: `persistFavorites` (setFavorites GAS) puis fermeture du mode édition.
+  const handleDockEditDone = useCallback(async () => {
+    if (sessionCredentials) {
+      await persistFavorites(favoriteOrder);
+    }
+    setDockEditMode(false);
+  }, [sessionCredentials, favoriteOrder, persistFavorites]);
 
   // 1) Purpose:
   // - Terminer la session locale (sessionStorage) et réinitialiser l’état UI (dock, modals).
@@ -1467,7 +1502,7 @@ export default function TeslaFuturisticPortalConcept() {
                   {dockEditMode && isLoggedIn && (
                     <button
                       type="button"
-                      onClick={() => setDockEditMode(false)}
+                      onClick={() => void handleDockEditDone()}
                       className="rounded-full bg-emerald-500/20 px-3 py-2 text-xs font-medium text-emerald-100 ring-1 ring-emerald-400/30 transition hover:bg-emerald-500/30"
                     >
                       Terminer
@@ -1492,17 +1527,25 @@ export default function TeslaFuturisticPortalConcept() {
                 {/* 1) Purpose:
                     - Contenu du dock développé : message invité, favoris (édition / glisser-déposer), ou vide.
                     2) Key variables:
-                    - `filteredFavoriteDockApps`: favoris filtrés par la recherche globale.
+                    - `favoriteDockApps`: tous les favoris (recherche globale ne filtre pas le dock, pour ne pas corrompre le drag).
                     3) Logic flow:
                     - Visible uniquement quand le dock n'est pas réduit (`!isDockCollapsed`). */}
                 <div className="no-scrollbar dock-edge-fade min-h-[52px] pb-1">
+                  {dockBannerMessage && (
+                    <div
+                      className="mb-2 rounded-[12px] bg-amber-500/15 px-3 py-2 text-xs leading-snug text-amber-100 ring-1 ring-amber-400/25"
+                      role="status"
+                    >
+                      {dockBannerMessage}
+                    </div>
+                  )}
                   {!isLoggedIn ? (
                     <div className="w-full rounded-[14px] bg-white/[0.055] px-4 py-3 text-center text-sm text-white/65 ring-1 ring-white/10">
                       Veuillez créer un compte pour pouvoir utiliser le dock
                     </div>
-                  ) : filteredFavoriteDockApps.length > 0 ? (
+                  ) : favoriteDockApps.length > 0 ? (
                     <DockFavoritesBar
-                      apps={filteredFavoriteDockApps}
+                      apps={favoriteDockApps}
                       editMode={dockEditMode}
                       logoUrl={logoUrl}
                       onEnterEditMode={() => setDockEditMode(true)}

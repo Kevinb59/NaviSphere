@@ -175,8 +175,9 @@ function removeFavorite_(sheet, data) {
   var row = sheet.getRange(rowIndex, 1, rowIndex, 26).getValues()[0];
   if (String(row[1]) !== password) return { ok: false, error: 'MOT_DE_PASSE_INVALIDE' };
   var idx = -1;
+  var lowerWant = favoriteName.toLowerCase();
   for (var i = 0; i < 24; i++) {
-    if (String(row[2 + i]).trim() === favoriteName) {
+    if (String(row[2 + i]).trim().toLowerCase() === lowerWant) {
       idx = i;
       break;
     }

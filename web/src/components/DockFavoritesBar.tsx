@@ -4,7 +4,7 @@ import {
   DndContext,
   type DragEndEvent,
   PointerSensor,
-  closestCenter,
+  closestCorners,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -26,11 +26,17 @@ import { useLongPress } from '../hooks/useLongPress';
 
 export type CatalogTile = { name: string; domain: string; href: string; icon: LucideIcon };
 
+// 1) Purpose:
+// - Tuile dock : `favoriteKey` = chaîne exacte stockée en Sheet / `favoriteOrder` (API remove / setFavorites).
+// 2) Key variables: `name` = libellé affiché (catalogue) ; `favoriteKey` = identifiant stable pour DnD + GAS.
+// 3) Logic flow: ne jamais envoyer `name` au backend si le Sheet contient une autre graphie (casse, etc.).
+export type DockFavoriteTile = CatalogTile & { favoriteKey: string };
+
 type SortableDockTileProps = {
-  app: CatalogTile;
+  app: DockFavoriteTile;
   editMode: boolean;
   logoUrl: (domain: string) => string;
-  onRemoveFavorite: (name: string) => void;
+  onRemoveFavorite: (favoriteKey: string) => void;
   onEnterEditMode: () => void;
 };
 
@@ -42,7 +48,7 @@ function SortableDockTile({
   onEnterEditMode,
 }: SortableDockTileProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: app.name,
+    id: app.favoriteKey,
     disabled: !editMode,
   });
 
@@ -64,9 +70,15 @@ function SortableDockTile({
       {editMode && (
         <button
           type="button"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => onRemoveFavorite(app.name)}
-          className="absolute -right-1 -top-1 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500/95 text-white shadow-md ring-1 ring-white/20 transition hover:bg-rose-400"
+          onPointerDownCapture={(event) => {
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onRemoveFavorite(app.favoriteKey);
+          }}
+          className="absolute -right-1 -top-1 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-rose-500/95 text-white shadow-md ring-1 ring-white/20 transition hover:bg-rose-400"
           aria-label={`Retirer ${app.name} des favoris`}
         >
           <X className="h-3.5 w-3.5" />
@@ -121,12 +133,12 @@ function SortableDockTile({
 }
 
 type DockFavoritesBarProps = {
-  apps: CatalogTile[];
+  apps: DockFavoriteTile[];
   editMode: boolean;
   logoUrl: (domain: string) => string;
   onEnterEditMode: () => void;
-  onRemoveFavorite: (name: string) => void;
-  onReorder: (orderedNames: string[]) => void;
+  onRemoveFavorite: (favoriteKey: string) => void;
+  onReorder: (orderedFavoriteKeys: string[]) => void;
 };
 
 export function DockFavoritesBar({
@@ -139,27 +151,31 @@ export function DockFavoritesBar({
 }: DockFavoritesBarProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
+      activationConstraint: { distance: 8 },
     }),
   );
 
+  // 1) Purpose:
+  // - Réordonner `favoriteOrder` côté parent via les clés Sheet (pas les libellés catalogue).
+  // 2) Key variables: `active.id` / `over.id` = `favoriteKey` dnd-kit.
+  // 3) Logic flow: `arrayMove` sur la liste des clés → `onReorder` → `setFavorites` GAS.
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const names = apps.map((a) => a.name);
-    const oldIndex = names.indexOf(String(active.id));
-    const newIndex = names.indexOf(String(over.id));
+    const keys = apps.map((a) => a.favoriteKey);
+    const oldIndex = keys.indexOf(String(active.id));
+    const newIndex = keys.indexOf(String(over.id));
     if (oldIndex === -1 || newIndex === -1) return;
-    onReorder(arrayMove(names, oldIndex, newIndex));
+    onReorder(arrayMove(keys, oldIndex, newIndex));
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={apps.map((a) => a.name)} strategy={horizontalListSortingStrategy}>
+    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+      <SortableContext items={apps.map((a) => a.favoriteKey)} strategy={horizontalListSortingStrategy}>
         <div className="no-scrollbar dock-edge-fade flex gap-3 overflow-x-auto pb-1">
           {apps.map((app) => (
             <SortableDockTile
-              key={app.name}
+              key={app.favoriteKey}
               app={app}
               editMode={editMode}
               logoUrl={logoUrl}
