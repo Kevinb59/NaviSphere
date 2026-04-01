@@ -12,6 +12,10 @@
  *
  * Important : les lignes utilisateur sont écrites dans la **première feuille** du classeur (`getSheets()[0]`).
  * Si tu ne vois rien, vérifie que l’onglet tout à gauche contient bien les colonnes Alias | MDP | …
+ *
+ * Colonnes C–Z (App1–App24) : l’app stocke des **identifiants stables** (slugs, ex. `disney-plus`, `apple-tv-1`),
+ * pas les libellés avec espaces ou « + ». Les anciennes cellules avec l’ancien libellé restent lisibles côté client
+ * (normalisation au login). **Ne publie pas** le tableur en CSV public : la colonne B contient les mots de passe.
  */
 
 // 1) Purpose:

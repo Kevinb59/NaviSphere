@@ -8,6 +8,7 @@ import { useLongPress } from '../hooks/useLongPress';
 // - `useLongPress` bloque le clic si un long press a été détecté pour éviter d'ouvrir le lien.
 
 type ServiceLike = {
+  id: string;
   name: string;
   domain: string;
   href: string;

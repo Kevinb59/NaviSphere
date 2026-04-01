@@ -17,15 +17,8 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import {
-  formatGasAuthMessage,
-  gasAddFavorite,
-  gasLogin,
-  gasRegister,
-  gasRemoveFavorite,
-  gasSetFavorites,
-  isGasConfigured,
-} from './api/gasClient';
+import { formatGasAuthMessage, gasLogin, gasRegister, gasSetFavorites, isGasConfigured } from './api/gasClient';
+import { splitCatalogByBlockLengths, withUniqueIds } from './catalog/serviceIds';
 import { loadLocalFavorites, saveLocalFavorites } from './auth/localFavorites';
 import { DockFavoritesBar } from './components/DockFavoritesBar';
 import { FavoriteConfirmModal } from './components/FavoriteConfirmModal';
@@ -49,7 +42,7 @@ const FULLSCREEN_REDIRECT_URL = `https://www.youtube.com/redirect?q=${encodeURIC
 // - `href`: URL de destination ouverte au clic.
 // 3) Logic flow:
 // - Le dock mappe ce tableau, et la recherche locale filtre ces mêmes entrées par nom/domaine.
-const dockApps = [
+const dockAppsRaw = [
   { name: 'Plex', domain: 'app.plex.tv', href: 'https://app.plex.tv', icon: Film },
   { name: 'myCanal', domain: 'canalplus.com', href: 'https://www.canalplus.com/', icon: Film },
   { name: 'Disney+', domain: 'disneyplus.com', href: 'https://www.disneyplus.com/fr-fr', icon: Film },
@@ -122,7 +115,7 @@ const quickMenuItems = [
   { title: 'Réseaux sociaux', icon: ScreenShare },
 ];
 
-const musicServices = [
+const musicServicesRaw = [
   { name: 'Apple Music', domain: 'music.apple.com', href: 'https://music.apple.com/fr/', icon: Music2 },
   { name: 'Amazon Music', domain: 'music.amazon.fr', href: 'https://music.amazon.fr/', icon: Music2 },
   { name: 'Deezer', domain: 'deezer.com', href: 'https://www.deezer.com/fr/', icon: Music2 },
@@ -131,7 +124,7 @@ const musicServices = [
   { name: 'Spotify', domain: 'spotify.com', href: 'https://open.spotify.com/', icon: Music2 },
 ];
 
-const gameServices = [
+const gameServicesRaw = [
   { name: 'Xbox Cloud Gaming', domain: 'xbox.com', href: 'https://www.xbox.com/fr-FR/play', icon: Gamepad2 },
   { name: 'RetroGames', domain: 'retrogames.cc', href: 'https://www.retrogames.cc/', icon: Gamepad2 },
   { name: 'GameSnacks', domain: 'gamesnacks.com', href: 'https://gamesnacks.com/', icon: Gamepad2 },
@@ -142,7 +135,7 @@ const gameServices = [
   { name: 'Afterplay', domain: 'afterplay.io', href: 'https://afterplay.io/', icon: Gamepad2 },
 ];
 
-const socialServices = [
+const socialServicesRaw = [
   { name: 'X (Twitter)', domain: 'x.com', href: 'https://x.com/', icon: ScreenShare },
   { name: 'Facebook', domain: 'facebook.com', href: 'https://www.facebook.com/', icon: ScreenShare },
   { name: 'Instagram', domain: 'instagram.com', href: 'https://www.instagram.com/', icon: ScreenShare },
@@ -155,7 +148,7 @@ const socialServices = [
   { name: 'Snapchat', domain: 'snapchat.com', href: 'https://www.snapchat.com/', icon: ScreenShare },
 ];
 
-const communicationServices = [
+const communicationServicesRaw = [
   { name: 'Discord', domain: 'discord.com', href: 'https://discord.com/app', icon: MessageSquare },
   { name: 'Messenger', domain: 'messenger.com', href: 'https://www.messenger.com/', icon: MessageSquare },
   { name: 'Microsoft Teams', domain: 'teams.microsoft.com', href: 'https://teams.microsoft.com/', icon: MessageSquare },
@@ -163,7 +156,7 @@ const communicationServices = [
   { name: 'WhatsApp Web', domain: 'web.whatsapp.com', href: 'https://web.whatsapp.com/', icon: MessageSquare },
 ];
 
-const navigationServices = [
+const navigationServicesRaw = [
   { name: 'Apple Plans', domain: 'maps.apple.com', href: 'https://maps.apple.com/', icon: Compass },
   { name: 'Google Maps', domain: 'maps.google.com', href: 'https://maps.google.com/', icon: Compass },
   { name: 'HERE WeGo', domain: 'wego.here.com', href: 'https://wego.here.com/', icon: Compass },
@@ -175,7 +168,7 @@ const navigationServices = [
   { name: 'Waze', domain: 'waze.com', href: 'https://www.waze.com/', icon: Compass },
 ];
 
-const chargingServices = [
+const chargingServicesRaw = [
   { name: 'A Better Routeplanner', domain: 'abetterrouteplanner.com', href: 'https://abetterrouteplanner.com/', icon: BatteryCharging },
   { name: 'Chargemap', domain: 'chargemap.com', href: 'https://fr.chargemap.com/', icon: BatteryCharging },
   { name: 'Chargeprice', domain: 'chargeprice.app', href: 'https://chargeprice.app/', icon: BatteryCharging },
@@ -192,26 +185,84 @@ const chargingServices = [
 ];
 
 // 1) Purpose:
-// - Catalogue fusionné pour résoudre un nom de favori (feuille Sheet) vers domaine + lien.
-// 2) Key variables:
-// - `ALL_CATALOG_SERVICES`: union de toutes les listes latérales + dock.
-// 3) Logic flow:
-// - Les noms enregistrés dans App1–App24 doivent correspondre exactement à `name` ici.
-const ALL_CATALOG_SERVICES = [
-  ...dockApps,
-  ...musicServices,
-  ...gameServices,
-  ...socialServices,
-  ...communicationServices,
-  ...navigationServices,
-  ...chargingServices,
-];
+// - Fusionner tous les blocs puis attribuer des `id` uniques (slugs) pour le stockage Sheet C–Z.
+// 2) Key variables: longueurs de blocs alignées sur l’ordre de concaténation.
+// 3) Logic flow: `withUniqueIds` sur le plat → `splitCatalogByBlockLengths` reconstitue dock, musique, etc.
+const CATALOG_BLOCK_LENGTHS = [
+  dockAppsRaw.length,
+  musicServicesRaw.length,
+  gameServicesRaw.length,
+  socialServicesRaw.length,
+  communicationServicesRaw.length,
+  navigationServicesRaw.length,
+  chargingServicesRaw.length,
+] as const;
+const ALL_CATALOG_FLAT = withUniqueIds([
+  ...dockAppsRaw,
+  ...musicServicesRaw,
+  ...gameServicesRaw,
+  ...socialServicesRaw,
+  ...communicationServicesRaw,
+  ...navigationServicesRaw,
+  ...chargingServicesRaw,
+]);
+const [
+  dockApps,
+  musicServices,
+  gameServices,
+  socialServices,
+  communicationServices,
+  navigationServices,
+  chargingServices,
+] = splitCatalogByBlockLengths(ALL_CATALOG_FLAT, [...CATALOG_BLOCK_LENGTHS]);
+const ALL_CATALOG_SERVICES = ALL_CATALOG_FLAT;
 
 // 1) Purpose:
-// - Associer une entrée Sheet (`favoriteKey`) au métadonnées catalogue (domaine, libellé) même si la casse diffère.
-// 2) Key variables: `favoriteKey` = texte exact côté API ; retour = entrée catalogue ou undefined.
-// 3) Logic flow: égalité stricte d’abord, puis comparaison insensible à la casse.
+// - Accès O(1) au service par identifiant stocké dans une cellule App*.
+// 2) Key variables: clé = `id` (slug) ; valeur = entrée catalogue complète.
+// 3) Logic flow: construit une seule fois au chargement du module.
+const ALL_CATALOG_BY_ID = new Map(ALL_CATALOG_SERVICES.map((s) => [s.id, s]));
+
+// 1) Purpose:
+// - Convertir une cellule Sheet (slug, ancien libellé, casse différente) en id canonique pour l’état React.
+// 2) Key variables: `raw` = texte brut d’une colonne App* ; retour null si vide.
+// 3) Logic flow: id connu → nom exact → nom insensible à la casse → sinon conserver la chaîne (orphelin).
+function normalizeFavoriteSlot(raw: string): string | null {
+  const t = raw.trim();
+  if (!t) return null;
+  if (ALL_CATALOG_BY_ID.has(t)) return t;
+  const byExactName = ALL_CATALOG_SERVICES.find((s) => s.name === t);
+  if (byExactName) return byExactName.id;
+  const lower = t.toLowerCase();
+  const byCi = ALL_CATALOG_SERVICES.find((s) => s.name.toLowerCase() === lower);
+  if (byCi) return byCi.id;
+  return t;
+}
+
+// 1) Purpose:
+// - Produit la liste d’ids favoris (max 24, sans doublon, ordre conservé) après login ou lecture locale.
+// 2) Key variables: `cells` = tableau brut renvoyé par GAS ou localStorage.
+// 3) Logic flow: pour chaque cellule, `normalizeFavoriteSlot` ; ignore les doublons successifs.
+function normalizeFavoritesFromSheet(cells: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const cell of cells) {
+    const id = normalizeFavoriteSlot(cell);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= 24) break;
+  }
+  return out;
+}
+
+// 1) Purpose:
+// - Résoudre une clé dock (id Sheet ou ancien nom) vers métadonnées catalogue pour l’affichage.
+// 2) Key variables: `favoriteKey` = id stocké ou chaîne héritée.
+// 3) Logic flow: Map par id → égalité sur `name` → casse insensible.
 function resolveCatalogEntryForFavoriteKey(favoriteKey: string) {
+  const byId = ALL_CATALOG_BY_ID.get(favoriteKey);
+  if (byId) return byId;
   const exact = ALL_CATALOG_SERVICES.find((s) => s.name === favoriteKey);
   if (exact) return exact;
   const lower = favoriteKey.toLowerCase();
@@ -296,20 +347,22 @@ export default function TeslaFuturisticPortalConcept() {
   const [authFormError, setAuthFormError] = useState('');
 
   // 1) Purpose:
-  // - Session applicative : identifiants pour GAS / localStorage et ordre des favoris (noms = colonnes App*).
+  // - Session applicative : identifiants pour GAS / localStorage et ordre des favoris (ids slugs en colonnes C–Z).
   // 2) Key variables:
   // - `sessionCredentials`: alias + mot de passe (MVP; à remplacer par token sécurisé plus tard).
-  // - `favoriteOrder`: ordre d'affichage du dock.
+  // - `favoriteOrder`: ids favoris validés (Sheet / dernier commit).
+  // - `dockDraftIds`: copie locale en mode édition (suppressions / ordre) jusqu’au clic « Terminé ».
   // - `dockEditMode`: édition (croix + glisser-déposer).
-  // - `favoritePendingName`: nom du service en attente de confirmation d'ajout aux favoris.
+  // - `favoritePendingServiceId`: id catalogue du service en attente de confirmation d’ajout.
   // 3) Logic flow:
   // - Connexion / inscription remplissent `sessionCredentials` et `favoriteOrder`; persistance via GAS ou local.
   const [sessionCredentials, setSessionCredentials] = useState<{ alias: string; password: string } | null>(
     null,
   );
   const [favoriteOrder, setFavoriteOrder] = useState<string[]>([]);
+  const [dockDraftIds, setDockDraftIds] = useState<string[] | null>(null);
   const [dockEditMode, setDockEditMode] = useState(false);
-  const [favoritePendingName, setFavoritePendingName] = useState<string | null>(null);
+  const [favoritePendingServiceId, setFavoritePendingServiceId] = useState<string | null>(null);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [dockBannerMessage, setDockBannerMessage] = useState('');
 
@@ -369,9 +422,9 @@ export default function TeslaFuturisticPortalConcept() {
             // 2) Key variables: `res.favorites` (serveur) vs `loadLocalFavorites(alias)`.
             // 3) Logic flow: priorité au serveur s’il a des entrées ; sinon repli localStorage.
             const fromServer = res.favorites;
-            setFavoriteOrder(
-              fromServer && fromServer.length > 0 ? fromServer : loadLocalFavorites(alias),
-            );
+            const raw =
+              fromServer && fromServer.length > 0 ? fromServer : loadLocalFavorites(alias);
+            setFavoriteOrder(normalizeFavoritesFromSheet(raw));
           } else {
             sessionStorage.removeItem('navisphere_alias');
             sessionStorage.removeItem('navisphere_mdp');
@@ -383,11 +436,11 @@ export default function TeslaFuturisticPortalConcept() {
           // 2) Key variables: `alias` / `mdp` depuis sessionStorage (déjà validés).
           // 3) Logic flow: session restaurée + favoris locaux uniquement jusqu’à ce que GAS réponde à nouveau.
           setSessionCredentials({ alias, password: mdp });
-          setFavoriteOrder(loadLocalFavorites(alias));
+          setFavoriteOrder(normalizeFavoritesFromSheet(loadLocalFavorites(alias)));
         });
     } else {
       setSessionCredentials({ alias, password: mdp });
-      setFavoriteOrder(loadLocalFavorites(alias));
+      setFavoriteOrder(normalizeFavoritesFromSheet(loadLocalFavorites(alias)));
     }
   }, []);
 
@@ -560,11 +613,12 @@ export default function TeslaFuturisticPortalConcept() {
   };
 
   // 1) Purpose:
-  // - Dock : une tuile par entrée `favoriteOrder` ; `favoriteKey` = chaîne Sheet exacte pour remove / setFavorites.
-  // 2) Key variables: résolution catalogue (casse) + repli visuel si service inconnu.
-  // 3) Logic flow: `resolveCatalogEntryForFavoriteKey` → domaine/icône ; sinon tuile générique avec le texte Sheet.
+  // - Dock : tuiles à partir du brouillon en édition ou des favoris commités.
+  // 2) Key variables: `favoriteKey` = id Sheet (slug) pour DnD / suppression locale.
+  // 3) Logic flow: résolution catalogue par id ou ancien nom ; repli visuel si orphelin.
   const favoriteDockApps = useMemo(() => {
-    return favoriteOrder.map((favoriteKey) => {
+    const ids = dockEditMode && dockDraftIds !== null ? dockDraftIds : favoriteOrder;
+    return ids.map((favoriteKey) => {
       const found = resolveCatalogEntryForFavoriteKey(favoriteKey);
       if (found) {
         return { ...found, favoriteKey, name: found.name };
@@ -577,7 +631,7 @@ export default function TeslaFuturisticPortalConcept() {
         icon: Film,
       };
     });
-  }, [favoriteOrder]);
+  }, [dockDraftIds, dockEditMode, favoriteOrder]);
   const sortedStreamingServices = sortServicesByName(filteredStreamingServices);
   const sortedMusicServices = sortServicesByName(filteredMusicServices);
   const sortedGameServices = sortServicesByName(filteredGameServices);
@@ -785,43 +839,43 @@ export default function TeslaFuturisticPortalConcept() {
   };
 
   // 1) Purpose:
-  // - Persister la liste complète (réordonnancement dock) : écrit l’ordre dense dans App1…App24.
-  // 2) Key variables:
-  // - `names`: jusqu'à 24 entrées, ordre = colonnes App1…App24 (sans trous).
-  // 3) Logic flow:
-  // - `setFavorites` GAS ; pour ajout / suppression unitaire, utiliser `gasAddFavorite` / `gasRemoveFavorite`.
-  const persistFavorites = useCallback(
-    async (names: string[]) => {
-      if (!sessionCredentials) return;
-      const trimmed = names.slice(0, 24);
-      setFavoriteOrder(trimmed);
+  // - Écrire d’un coup les colonnes C–Z (24 ids) via `setFavorites` ; met à jour l’état seulement après succès.
+  // 2) Key variables: `ids` = ordre utilisateur (déjà des slugs après normalisation d’entrée).
+  // 3) Logic flow: compactage + dédup → POST GAS → `normalizeFavoritesFromSheet` sur la réponse ; repli local si échec.
+  const commitFavorites = useCallback(
+    async (ids: string[]): Promise<boolean> => {
+      if (!sessionCredentials) return false;
+      const compact = normalizeFavoritesFromSheet(ids);
       setDockBannerMessage('');
-      if (isGasConfigured()) {
-        try {
-          const res = await gasSetFavorites({
-            alias: sessionCredentials.alias,
-            password: sessionCredentials.password,
-            favorites: trimmed,
-          });
-          if (!res.ok) {
-            saveLocalFavorites(sessionCredentials.alias, trimmed);
-            setDockBannerMessage(
-              'Sauvegarde serveur impossible : favoris enregistrés localement sur cet appareil.',
-            );
-            return;
-          }
-          setFavoriteOrder(res.favorites);
-          saveLocalFavorites(sessionCredentials.alias, res.favorites);
-          return;
-        } catch (err) {
-          saveLocalFavorites(sessionCredentials.alias, trimmed);
-          setDockBannerMessage(
-            err instanceof Error ? err.message : 'Erreur réseau : favoris enregistrés localement.',
-          );
-          return;
-        }
+      if (!isGasConfigured()) {
+        setFavoriteOrder(compact);
+        saveLocalFavorites(sessionCredentials.alias, compact);
+        return true;
       }
-      saveLocalFavorites(sessionCredentials.alias, trimmed);
+      try {
+        const res = await gasSetFavorites({
+          alias: sessionCredentials.alias,
+          password: sessionCredentials.password,
+          favorites: compact,
+        });
+        if (!res.ok) {
+          saveLocalFavorites(sessionCredentials.alias, compact);
+          setDockBannerMessage(
+            'Sauvegarde serveur impossible : favoris enregistrés localement sur cet appareil.',
+          );
+          return false;
+        }
+        const normalized = normalizeFavoritesFromSheet(res.favorites);
+        setFavoriteOrder(normalized);
+        saveLocalFavorites(sessionCredentials.alias, normalized);
+        return true;
+      } catch (err) {
+        saveLocalFavorites(sessionCredentials.alias, compact);
+        setDockBannerMessage(
+          err instanceof Error ? err.message : 'Erreur réseau : favoris enregistrés localement.',
+        );
+        return false;
+      }
     },
     [sessionCredentials],
   );
@@ -846,18 +900,18 @@ export default function TeslaFuturisticPortalConcept() {
         sessionStorage.setItem('navisphere_mdp', loginPassword);
         setSessionCredentials({ alias: loginAlias.trim(), password: loginPassword });
         const fromServer = res.favorites;
-        setFavoriteOrder(
+        const raw =
           fromServer && fromServer.length > 0
             ? fromServer
-            : loadLocalFavorites(loginAlias.trim()),
-        );
+            : loadLocalFavorites(loginAlias.trim());
+        setFavoriteOrder(normalizeFavoritesFromSheet(raw));
         closeAuthModal();
         return;
       }
       sessionStorage.setItem('navisphere_alias', loginAlias.trim());
       sessionStorage.setItem('navisphere_mdp', loginPassword);
       setSessionCredentials({ alias: loginAlias.trim(), password: loginPassword });
-      setFavoriteOrder(loadLocalFavorites(loginAlias.trim()));
+      setFavoriteOrder(normalizeFavoritesFromSheet(loadLocalFavorites(loginAlias.trim())));
       closeAuthModal();
     } catch (err) {
       setAuthFormError(err instanceof Error ? err.message : 'Erreur réseau.');
@@ -908,123 +962,101 @@ export default function TeslaFuturisticPortalConcept() {
   // 2) Key variables:
   // - `serviceName`: doit exister dans `ALL_CATALOG_SERVICES`.
   // 3) Logic flow:
-  // - Contrôle doublon, plafond 24, puis `setFavoritePendingName` pour le modal.
+  // - Contrôle doublon, plafond 24, puis `setFavoritePendingServiceId` pour le modal.
   const handleLongPressFavoriteIntent = useCallback(
-    (serviceName: string) => {
+    (serviceId: string) => {
       if (!sessionCredentials) {
         setAuthModal('login');
         return;
       }
-      if (favoriteOrder.includes(serviceName)) {
+      const currentDock = dockEditMode && dockDraftIds !== null ? dockDraftIds : favoriteOrder;
+      if (currentDock.includes(serviceId)) {
         window.alert('Ce service est déjà dans vos favoris.');
         return;
       }
-      if (favoriteOrder.length >= 24) {
+      if (currentDock.length >= 24) {
         window.alert('Vous avez atteint la limite de 24 favoris.');
         return;
       }
-      setFavoritePendingName(serviceName);
+      setFavoritePendingServiceId(serviceId);
     },
-    [favoriteOrder, sessionCredentials],
+    [dockDraftIds, dockEditMode, favoriteOrder, sessionCredentials],
   );
 
   // 1) Purpose:
-  // - Confirmer l'ajout depuis le modal après appui long.
-  // 2) Key variables:
-  // - `favoritePendingName`: concaténé à `favoriteOrder` puis persistance.
-  // 3) Logic flow:
-  // - Mise à jour d'état puis `persistFavorites` asynchrone.
+  // - Confirmer l'ajout depuis le modal : en mode édition → brouillon seulement ; sinon un seul `setFavorites`.
+  // 2) Key variables: `favoritePendingServiceId` = slug catalogue à ajouter.
+  // 3) Logic flow: brouillon `dockDraftIds` ou `commitFavorites([...favoriteOrder, id])`.
   const confirmFavoriteAdd = useCallback(async () => {
-    if (!favoritePendingName || !sessionCredentials) return;
-    const name = favoritePendingName;
-    setFavoritePendingName(null);
-    if (isGasConfigured()) {
-      try {
-        const res = await gasAddFavorite({
-          alias: sessionCredentials.alias,
-          password: sessionCredentials.password,
-          favoriteName: name,
-        });
-        if (!res.ok) {
-          if (res.error === 'FAVORI_DEJA_PRESENT') {
-            setDockBannerMessage('Ce favori est déjà dans le dock.');
-          } else if (res.error === 'DOCK_PLEIN') {
-            setDockBannerMessage('Dock plein (24 favoris maximum).');
-          } else {
-            setDockBannerMessage(formatGasAuthMessage(res.error, 'register'));
-          }
-          return;
-        }
-        setFavoriteOrder(res.favorites);
-        saveLocalFavorites(sessionCredentials.alias, res.favorites);
-        setDockBannerMessage('');
-      } catch (err) {
-        setDockBannerMessage(err instanceof Error ? err.message : 'Erreur réseau.');
-      }
-      return;
-    }
-    await persistFavorites([...favoriteOrder, name]);
-  }, [favoriteOrder, favoritePendingName, persistFavorites, sessionCredentials]);
-
-  // 1) Purpose:
-  // - Retirer un favori depuis le mode édition du dock.
-  // 2) Key variables:
-  // - `favoriteKey` = même chaîne que dans `favoriteOrder` / cellules Sheet (voir `DockFavoriteTile.favoriteKey`).
-  // 3) Logic flow:
-  // - GAS `removeFavorite` ou filtrage local puis `persistFavorites`.
-  const handleRemoveFavoriteFromDock = useCallback(
-    async (favoriteKey: string) => {
-      if (!sessionCredentials) return;
-      if (isGasConfigured()) {
-        try {
-          const res = await gasRemoveFavorite({
-            alias: sessionCredentials.alias,
-            password: sessionCredentials.password,
-            favoriteName: favoriteKey,
-          });
-          if (!res.ok) {
-            setDockBannerMessage(
-              res.error === 'FAVORI_ABSENT' ? 'Favori introuvable.' : formatGasAuthMessage(res.error, 'login'),
-            );
-            return;
-          }
-          setFavoriteOrder(res.favorites);
-          saveLocalFavorites(sessionCredentials.alias, res.favorites);
-          setDockBannerMessage('');
-        } catch (err) {
-          setDockBannerMessage(err instanceof Error ? err.message : 'Erreur réseau.');
-        }
+    if (!favoritePendingServiceId || !sessionCredentials) return;
+    const id = favoritePendingServiceId;
+    setFavoritePendingServiceId(null);
+    if (dockEditMode && dockDraftIds !== null) {
+      if (dockDraftIds.length >= 24) {
+        setDockBannerMessage('Dock plein (24 favoris maximum).');
         return;
       }
-      const next = favoriteOrder.filter((n) => n !== favoriteKey);
-      await persistFavorites(next);
-    },
-    [favoriteOrder, persistFavorites, sessionCredentials],
-  );
-
-  // 1) Purpose:
-  // - Appliquer un nouvel ordre après glisser-déposer dans le dock.
-  // 2) Key variables:
-  // - `orderedNames`: ordre exact des noms après `arrayMove`.
-  // 3) Logic flow:
-  // - Délégation à `persistFavorites`.
-  const handleReorderDockFavorites = useCallback(
-    async (orderedNames: string[]) => {
-      await persistFavorites(orderedNames);
-    },
-    [persistFavorites],
-  );
-
-  // 1) Purpose:
-  // - Quitter le mode édition du dock en renvoyant l’ordre actuel au Sheet (sync explicite au clic « Terminé »).
-  // 2) Key variables: `favoriteOrder` = ordre affiché après glisser-déposer.
-  // 3) Logic flow: `persistFavorites` (setFavorites GAS) puis fermeture du mode édition.
-  const handleDockEditDone = useCallback(async () => {
-    if (sessionCredentials) {
-      await persistFavorites(favoriteOrder);
+      if (dockDraftIds.includes(id)) {
+        setDockBannerMessage('Ce favori est déjà dans le dock.');
+        return;
+      }
+      setDockDraftIds([...dockDraftIds, id]);
+      setDockBannerMessage('');
+      return;
     }
-    setDockEditMode(false);
-  }, [sessionCredentials, favoriteOrder, persistFavorites]);
+    if (favoriteOrder.length >= 24) {
+      setDockBannerMessage('Dock plein (24 favoris maximum).');
+      return;
+    }
+    if (favoriteOrder.includes(id)) {
+      setDockBannerMessage('Ce favori est déjà dans le dock.');
+      return;
+    }
+    await commitFavorites([...favoriteOrder, id]);
+  }, [commitFavorites, dockDraftIds, dockEditMode, favoriteOrder, favoritePendingServiceId, sessionCredentials]);
+
+  // 1) Purpose:
+  // - Retirer un favori en mode édition : uniquement le brouillon local (sync au « Terminé »).
+  // 2) Key variables: `favoriteKey` = id stocké Sheet / `DockFavoriteTile.favoriteKey`.
+  // 3) Logic flow: filtre sur `dockDraftIds` sans requête réseau.
+  const handleRemoveFavoriteFromDock = useCallback(
+    (favoriteKey: string) => {
+      if (!dockEditMode || dockDraftIds === null) return;
+      setDockDraftIds(dockDraftIds.filter((fid) => fid !== favoriteKey));
+    },
+    [dockDraftIds, dockEditMode],
+  );
+
+  // 1) Purpose:
+  // - Mettre à jour l’ordre du brouillon après glisser-déposer (aucun appel réseau).
+  // 2) Key variables: `orderedIds` = liste réordonnée des `favoriteKey`.
+  // 3) Logic flow: `setDockDraftIds` si mode édition actif.
+  const handleReorderDockFavorites = useCallback(
+    (orderedIds: string[]) => {
+      if (dockEditMode && dockDraftIds !== null) {
+        setDockDraftIds(orderedIds);
+      }
+    },
+    [dockDraftIds, dockEditMode],
+  );
+
+  // 1) Purpose:
+  // - Une seule requête `setFavorites` pour réécrire C–Z, puis fermeture du mode édition.
+  // 2) Key variables: `dockDraftIds` = liste éditée ; repli sur `favoriteOrder` si brouillon absent.
+  // 3) Logic flow: `commitFavorites` ; en cas d’échec, on reste en édition pour réessayer.
+  const handleDockEditDone = useCallback(async () => {
+    if (!sessionCredentials) {
+      setDockEditMode(false);
+      setDockDraftIds(null);
+      return;
+    }
+    const payload = dockDraftIds ?? favoriteOrder;
+    const ok = await commitFavorites(payload);
+    if (ok) {
+      setDockEditMode(false);
+      setDockDraftIds(null);
+    }
+  }, [commitFavorites, dockDraftIds, favoriteOrder, sessionCredentials]);
 
   // 1) Purpose:
   // - Terminer la session locale (sessionStorage) et réinitialiser l’état UI (dock, modals).
@@ -1038,7 +1070,8 @@ export default function TeslaFuturisticPortalConcept() {
     setSessionCredentials(null);
     setFavoriteOrder([]);
     setDockEditMode(false);
-    setFavoritePendingName(null);
+    setDockDraftIds(null);
+    setFavoritePendingServiceId(null);
     setHelpModalOpen(false);
     closeAuthModal();
   }, [closeAuthModal]);
@@ -1460,10 +1493,10 @@ export default function TeslaFuturisticPortalConcept() {
                         : sortedStreamingServices
                     ).map((service) => (
                       <ServiceCatalogTile
-                        key={service.name}
+                        key={service.id}
                         service={service}
                         logoUrl={logoUrl}
-                        onLongPressIntent={() => handleLongPressFavoriteIntent(service.name)}
+                        onLongPressIntent={() => handleLongPressFavoriteIntent(service.id)}
                       />
                     ))}
                     {isSearchPanelOpen && sortedSearchServices.length === 0 && (
@@ -1548,7 +1581,10 @@ export default function TeslaFuturisticPortalConcept() {
                       apps={favoriteDockApps}
                       editMode={dockEditMode}
                       logoUrl={logoUrl}
-                      onEnterEditMode={() => setDockEditMode(true)}
+                      onEnterEditMode={() => {
+                        setDockDraftIds([...favoriteOrder]);
+                        setDockEditMode(true);
+                      }}
                       onRemoveFavorite={handleRemoveFavoriteFromDock}
                       onReorder={handleReorderDockFavorites}
                     />
@@ -1776,16 +1812,18 @@ export default function TeslaFuturisticPortalConcept() {
       {/* 1) Purpose:
           - Confirmer l'ajout d'un service aux favoris après appui long dans les grilles latérales.
           2) Key variables:
-          - `favoritePendingName`: nom affiché dans le modal.
+          - `favoritePendingServiceId`: id service ; libellé via `ALL_CATALOG_BY_ID`.
           3) Logic flow:
           - `AnimatePresence` pour l'entrée/sortie; z-index au-dessus du reste sauf si besoin d'empiler avec l'auth. */}
       <AnimatePresence>
-        {favoritePendingName && (
+        {favoritePendingServiceId && (
           <FavoriteConfirmModal
             key="fav-pending"
-            appName={favoritePendingName}
+            appName={
+              ALL_CATALOG_BY_ID.get(favoritePendingServiceId)?.name ?? favoritePendingServiceId
+            }
             onConfirm={() => void confirmFavoriteAdd()}
-            onCancel={() => setFavoritePendingName(null)}
+            onCancel={() => setFavoritePendingServiceId(null)}
           />
         )}
       </AnimatePresence>
@@ -1843,7 +1881,8 @@ export default function TeslaFuturisticPortalConcept() {
                 </li>
                 <li>
                   Le dock affiche vos favoris. Appui long sur une tuile du dock pour le mode édition
-                  (réorganisation, suppression).
+                  (réorganisation, suppression en local). Appuyez sur « Terminé » pour enregistrer une seule fois
+                  dans la feuille (colonnes des apps).
                 </li>
                 <li>La déconnexion efface la session sur cet appareil (alias stocké localement).</li>
               </ul>
