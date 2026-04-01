@@ -40,6 +40,14 @@ Le proxy **`api/gas.ts`** utilise le **runtime Node.js** (`@vercel/node`), pas *
 
 **Diagnostic :** ouvre `GET /api/gas` sur ton domaine : réponse JSON `{ ok: true, ping: true }` et en-tête `X-NaviSphere-Proxy: 1` si la fonction serverless répond. Si **GET** est déjà en **403**, vérifie **Vercel → Security** (protection du déploiement, pare-feu).
 
+### Feuille Google : aucune ligne ajoutée alors que l’exécution GAS se termine
+
+Souvent le projet Apps Script est **autonome** (créé depuis script.google.com) : en **Application Web**, `getActiveSpreadsheet()` **n’a pas de classeur actif**, l’erreur est attrapée et l’UI affiche « Inscription impossible » sans rien écrire.
+
+**À faire :** dans **Projet Google Apps Script → Paramètres du projet (engrenage) → Propriétés du script**, ajoute une propriété **`SPREADSHEET_ID`** = l’identifiant du tableur (dans l’URL : `https://docs.google.com/spreadsheets/d/`**`CET_ID`**`/edit`). Puis **redéploie** l’application web.
+
+**Alternative :** ouvre **Extensions → Apps Script** **depuis la feuille** (script lié au classeur) : dans ce cas `SPREADSHEET_ID` n’est pas obligatoire.
+
 En **développement local**, Vite proxy `/api/gas` vers cette même URL (voir `web/vite.config.ts`).
 
 Le corps reste en `Content-Type: text/plain` vers GAS, comme dans `example/Code.gs`.

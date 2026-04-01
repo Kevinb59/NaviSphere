@@ -17,7 +17,13 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { gasLogin, gasRegister, gasSetFavorites, isGasConfigured } from './api/gasClient';
+import {
+  formatGasAuthMessage,
+  gasLogin,
+  gasRegister,
+  gasSetFavorites,
+  isGasConfigured,
+} from './api/gasClient';
 import { loadLocalFavorites, saveLocalFavorites } from './auth/localFavorites';
 import { DockFavoritesBar } from './components/DockFavoritesBar';
 import { FavoriteConfirmModal } from './components/FavoriteConfirmModal';
@@ -783,13 +789,7 @@ export default function TeslaFuturisticPortalConcept() {
       if (isGasConfigured()) {
         const res = await gasLogin({ alias: loginAlias.trim(), password: loginPassword });
         if (!res.ok) {
-          setAuthFormError(
-            res.error === 'UTILISATEUR_INCONNU'
-              ? 'Alias inconnu.'
-              : res.error === 'MOT_DE_PASSE_INVALIDE'
-                ? 'Mot de passe incorrect.'
-                : 'Connexion impossible.',
-          );
+          setAuthFormError(formatGasAuthMessage(res.error, 'login'));
           return;
         }
         sessionStorage.setItem('navisphere_alias', loginAlias.trim());
@@ -827,7 +827,7 @@ export default function TeslaFuturisticPortalConcept() {
       if (isGasConfigured()) {
         const res = await gasRegister({ alias: registerAlias.trim(), password: registerPassword });
         if (!res.ok) {
-          setAuthFormError(res.error === 'ALIAS_EXISTE' ? 'Cet alias est déjà utilisé.' : "Inscription impossible.");
+          setAuthFormError(formatGasAuthMessage(res.error, 'register'));
           return;
         }
         sessionStorage.setItem('navisphere_alias', registerAlias.trim());

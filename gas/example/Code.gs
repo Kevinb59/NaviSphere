@@ -3,7 +3,33 @@
  * Feuille : ligne 1 = Alias | MDP | App1 … App24
  *
  * Déploiement : Application Web, exécuter en tant que : propriétaire, accès : Tous (ou restreint).
+ *
+ * Feuille cible :
+ * - Soit le script est ouvert depuis le tableur (projet « lié ») : getActiveSpreadsheet() fonctionne.
+ * - Soit projet « autonome » : Project settings > Script properties > SPREADSHEET_ID = l’ID dans l’URL du tableur
+ *   (entre /d/ et /edit).
  */
+
+// 1) Purpose:
+// - Retourner la première feuille du classeur NaviSphere (celle qui contient Alias | MDP | …).
+// 2) Key variables:
+// - Propriété script `SPREADSHEET_ID` : ID du Google Sheet (prioritaire si défini).
+// 3) Logic flow:
+// - Si SPREADSHEET_ID → openById ; sinon classeur actif (script lié au tableur) ; sinon erreur explicite.
+function getSheet_() {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('SPREADSHEET_ID');
+  if (id && String(id).trim()) {
+    return SpreadsheetApp.openById(String(id).trim()).getSheets()[0];
+  }
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error(
+      'FEUILLE_MANQUANTE: définis SPREADSHEET_ID (ID du tableur) dans Projet > Propriétés du script, ou ouvre ce script depuis Extensions > Apps Script sur ta feuille.'
+    );
+  }
+  return ss.getSheets()[0];
+}
 
 // 1) Purpose:
 // - Point d'entrée HTTP POST (JSON dans postData.contents).
@@ -15,7 +41,7 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+    var sheet = getSheet_();
     var data = JSON.parse(e.postData.contents);
     var action = data.action;
     if (action === 'register') {

@@ -7,6 +7,34 @@
 
 export type GasAuthResponse = { ok: true; favorites: string[] } | { ok: false; error: string };
 
+// 1) Purpose:
+// - Traduire les codes / messages renvoyés par GAS en texte lisible (feuille manquante, champs, etc.).
+// 2) Key variables: `error` = chaîne brute ; `mode` = login ou register pour les libellés par défaut.
+// 3) Logic flow: codes connus → message court ; sinon renvoyer le message GAS (tronqué si très long).
+export function formatGasAuthMessage(error: string, mode: 'login' | 'register'): string {
+  const e = error.trim();
+  if (e === 'CHAMPS_MANQUANTS') {
+    return 'Renseigne un alias et un mot de passe.';
+  }
+  if (
+    e.includes('FEUILLE_MANQUANTE') ||
+    e.includes('SPREADSHEET_ID') ||
+    e.includes('définis SPREADSHEET_ID') ||
+    e.includes('getActiveSpreadsheet')
+  ) {
+    return 'Accès au tableur : dans Google Apps Script → Paramètres du projet → Propriétés du script, ajoute SPREADSHEET_ID (l’ID dans l’URL de ta feuille), puis redéploie l’application web.';
+  }
+  if (mode === 'register') {
+    if (e === 'ALIAS_EXISTE') return 'Cet alias est déjà utilisé.';
+    if (e.length <= 200) return e || 'Inscription impossible.';
+    return `${e.slice(0, 197)}…`;
+  }
+  if (e === 'UTILISATEUR_INCONNU') return 'Alias inconnu.';
+  if (e === 'MOT_DE_PASSE_INVALIDE') return 'Mot de passe incorrect.';
+  if (e.length <= 200) return e || 'Connexion impossible.';
+  return `${e.slice(0, 197)}…`;
+}
+
 function getGasUrl(): string | undefined {
   const url = import.meta.env.VITE_GAS_WEB_APP_URL;
   return url && String(url).trim() ? String(url).trim() : undefined;
