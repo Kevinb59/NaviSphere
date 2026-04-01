@@ -3,10 +3,12 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import {
   BatteryCharging,
   ChevronDown,
+  CircleHelp,
   Clock3,
   Compass,
   Film,
   Gamepad2,
+  LogOut,
   MessageSquare,
   Music2,
   Play,
@@ -289,6 +291,7 @@ export default function TeslaFuturisticPortalConcept() {
   const [favoriteOrder, setFavoriteOrder] = useState<string[]>([]);
   const [dockEditMode, setDockEditMode] = useState(false);
   const [favoritePendingName, setFavoritePendingName] = useState<string | null>(null);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
 
   const isLoggedIn = sessionCredentials !== null;
 
@@ -910,6 +913,23 @@ export default function TeslaFuturisticPortalConcept() {
     [persistFavorites],
   );
 
+  // 1) Purpose:
+  // - Terminer la session locale (sessionStorage) et réinitialiser l’état UI (dock, modals).
+  // 2) Key variables:
+  // - `navisphere_alias` / `navisphere_mdp`: clés effacées côté navigateur.
+  // 3) Logic flow:
+  // - Suppression du stockage, reset des états, fermeture des formulaires d’auth.
+  const handleLogout = useCallback(() => {
+    sessionStorage.removeItem('navisphere_alias');
+    sessionStorage.removeItem('navisphere_mdp');
+    setSessionCredentials(null);
+    setFavoriteOrder([]);
+    setDockEditMode(false);
+    setFavoritePendingName(null);
+    setHelpModalOpen(false);
+    closeAuthModal();
+  }, [closeAuthModal]);
+
   return (
     <div className="min-h-screen overflow-hidden bg-[#0b0d11] text-white">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.08),transparent_28%),radial-gradient(circle_at_10%_20%,rgba(70,90,120,0.16),transparent_18%),radial-gradient(circle_at_90%_80%,rgba(55,75,95,0.16),transparent_20%)]" />
@@ -928,27 +948,54 @@ export default function TeslaFuturisticPortalConcept() {
                 </span>
               </div>
               {/* 1) Purpose:
-                  - Positionner les actions d'authentification juste sous l'encart NaviSphere.
+                  - Afficher connexion / inscription ou salutation + aide / déconnexion selon l’état session.
                   2) Key variables:
-                  - Boutons "Connexion"/"Inscription" au format capsule.
+                  - `sessionCredentials.alias`: texte « Bonjour, … ».
                   3) Logic flow:
-                  - Les boutons reprennent le style compact des contrôles d'en-tête (comme plein écran). */}
-              <div className="mt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => openAuthModal('login')}
-                  className="flex-1 rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/80 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12]"
-                >
-                  Connexion
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openAuthModal('register')}
-                  className="flex-1 rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/80 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12]"
-                >
-                  Inscription
-                </button>
-              </div>
+                  - Si connecté : ligne avec salutation tronquée et deux boutons icônes; sinon capsules Connexion / Inscription. */}
+              {isLoggedIn && sessionCredentials ? (
+                <div className="mt-2 flex items-center gap-2">
+                  <p
+                    className="min-w-0 flex-1 truncate rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/85 ring-1 ring-white/10 backdrop-blur-xl"
+                    title={sessionCredentials.alias}
+                  >
+                    Bonjour, {sessionCredentials.alias}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setHelpModalOpen(true)}
+                    className="rounded-full bg-black/25 p-2 text-white/75 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12]"
+                    aria-label="Aide"
+                  >
+                    <CircleHelp className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="rounded-full bg-black/25 p-2 text-white/75 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12]"
+                    aria-label="Déconnexion"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('login')}
+                    className="flex-1 rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/80 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12]"
+                  >
+                    Connexion
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('register')}
+                    className="flex-1 rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/80 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12]"
+                  >
+                    Inscription
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -1619,6 +1666,75 @@ export default function TeslaFuturisticPortalConcept() {
             onConfirm={() => void confirmFavoriteAdd()}
             onCancel={() => setFavoritePendingName(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* 1) Purpose:
+          - Panneau d’aide contextuel (raccourcis favoris / dock / session).
+          2) Key variables:
+          - `helpModalOpen`: contrôle l’affichage depuis le bouton icône Aide.
+          3) Logic flow:
+          - Fond cliquable ou bouton Fermer pour `setHelpModalOpen(false)`. */}
+      <AnimatePresence>
+        {helpModalOpen && (
+          <motion.div
+            key="help-modal"
+            className="fixed inset-0 z-[105] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            <motion.div
+              role="presentation"
+              className="absolute inset-0 bg-black/15 backdrop-blur-[4px]"
+              onClick={() => setHelpModalOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="help-modal-title"
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.99 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative z-[1] w-full max-w-md rounded-[18px] bg-[#11151b]/95 p-5 shadow-[0_32px_100px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setHelpModalOpen(false)}
+                className="absolute right-3 top-3 rounded-full bg-white/8 p-2 text-white/75 ring-1 ring-white/10 transition hover:bg-white/[0.14]"
+                aria-label="Fermer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Aide</p>
+              <h3 id="help-modal-title" className="mt-1 pr-8 text-lg font-medium text-white">
+                NaviSphere
+              </h3>
+              <ul className="mt-4 list-inside list-disc space-y-2 text-sm leading-relaxed text-white/70">
+                <li>
+                  Appui long (~2 s) sur une app dans les menus latéraux pour proposer l’ajout aux favoris.
+                </li>
+                <li>
+                  Le dock affiche vos favoris. Appui long sur une tuile du dock pour le mode édition
+                  (réorganisation, suppression).
+                </li>
+                <li>La déconnexion efface la session sur cet appareil (alias stocké localement).</li>
+              </ul>
+              <button
+                type="button"
+                onClick={() => setHelpModalOpen(false)}
+                className="mt-6 w-full rounded-[12px] bg-white/[0.12] px-3 py-2.5 text-sm font-medium text-white ring-1 ring-white/15 transition hover:bg-white/[0.18]"
+              >
+                Fermer
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
