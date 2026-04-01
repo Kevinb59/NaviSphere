@@ -1,36 +1,35 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
 // 1) Purpose:
-// - Proxy serveur vers l’URL /exec Google Apps Script pour contourner le blocage CORS du navigateur.
+// - Proxy Node.js (runtime par défaut Vercel, pas Edge) vers l’URL /exec GAS.
+// - L’Edge peut recevoir un 403 côté Google sans exécuter doPost (aucun log GAS).
 // 2) Key variables:
-// - `VITE_GAS_WEB_APP_URL` ou `GAS_WEB_APP_URL` : URL complète du déploiement GAS (variables Vercel).
+// - `process.env.GAS_WEB_APP_URL` ou `VITE_GAS_WEB_APP_URL` : URL complète /exec.
+// - `req.body` : corps JSON parsé par Vercel quand le client envoie application/json.
 // 3) Logic flow:
-// - POST entrant → même corps en text/plain vers GAS → réponse JSON renvoyée au client (même origine que le site).
+// - Vérif POST → relire l’URL GAS → reconstruire le corps JSON en string → POST text/plain vers GAS → renvoyer la réponse brute.
 
-export const config = { runtime: 'edge' };
-
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ ok: false, error: 'METHOD_NOT_ALLOWED' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
-    });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    res.status(405).json({ ok: false, error: 'METHOD_NOT_ALLOWED' });
+    return;
   }
 
   const gasUrl =
     process.env.GAS_WEB_APP_URL?.trim() ||
     process.env.VITE_GAS_WEB_APP_URL?.trim();
   if (!gasUrl) {
-    return new Response(JSON.stringify({ ok: false, error: 'GAS_URL_MISSING' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
-    });
+    res.status(500).json({ ok: false, error: 'GAS_URL_MISSING' });
+    return;
   }
 
-  const body = await request.text();
+  const bodyStr =
+    typeof req.body === 'string'
+      ? req.body
+      : Buffer.isBuffer(req.body)
+        ? req.body.toString('utf8')
+        : JSON.stringify(req.body ?? {});
 
-  // 1) Purpose:
-  // - En-têtes « navigateur » pour limiter les 403 côté Google sur certains appels datacenter / Edge.
-  // 2) Key variables: `gasUrl` = URL /exec GAS.
-  // 3) Logic flow: POST text/plain identique au client → réponse GAS renvoyée telle quelle.
   const upstream = await fetch(gasUrl, {
     method: 'POST',
     headers: {
@@ -39,14 +38,10 @@ export default async function handler(request: Request): Promise<Response> {
       'User-Agent':
         'Mozilla/5.0 (compatible; NaviSphere/1.0; +https://github.com/Kevinb59/NaviSphere)',
     },
-    body,
+    body: bodyStr,
   });
 
   const text = await upstream.text();
-  return new Response(text, {
-    status: upstream.status,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-    },
-  });
+  res.status(upstream.status).setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.send(text);
 }

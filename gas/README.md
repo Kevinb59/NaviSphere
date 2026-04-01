@@ -32,6 +32,8 @@ Le frontend appelle donc **`/api/gas`** sur **le même domaine** que le site ; l
 
 Le **rewrite** SPA dans `vercel.json` utilise `/((?!api/).*)` → `index.html` pour éviter qu’un `POST /api/gas` soit confondu avec la page HTML (souvent **403** sur Vercel).
 
+Le proxy **`api/gas.ts`** utilise le **runtime Node.js** (`@vercel/node`), pas **Edge** : certains appels vers `script.google.com` depuis l’Edge ne déclenchent pas `doPost` (aucun log GAS) et peuvent renvoyer **403**.
+
 En **développement local**, Vite proxy `/api/gas` vers cette même URL (voir `web/vite.config.ts`).
 
 Le corps reste en `Content-Type: text/plain` vers GAS, comme dans `example/Code.gs`.

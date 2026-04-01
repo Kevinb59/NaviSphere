@@ -33,9 +33,13 @@ export async function gasFetch<T>(body: Record<string, unknown>): Promise<T> {
     throw new Error('VITE_GAS_WEB_APP_URL non configurée (voir web/.env.example).');
   }
 
+  // 1) Purpose:
+  // - application/json : Vercel parse req.body côté fonction Node ; le proxy relaie en text/plain vers GAS (JSON.parse dans doPost).
+  // 2) Key variables: `body` = payload { action, ... }.
+  // 3) Logic flow: POST JSON → proxy Node → GAS.
   const response = await fetch(getGasProxyUrl(), {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    headers: { 'Content-Type': 'application/json;charset=utf-8' },
     body: JSON.stringify(body),
   });
 
