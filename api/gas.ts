@@ -27,9 +27,18 @@ export default async function handler(request: Request): Promise<Response> {
 
   const body = await request.text();
 
+  // 1) Purpose:
+  // - En-têtes « navigateur » pour limiter les 403 côté Google sur certains appels datacenter / Edge.
+  // 2) Key variables: `gasUrl` = URL /exec GAS.
+  // 3) Logic flow: POST text/plain identique au client → réponse GAS renvoyée telle quelle.
   const upstream = await fetch(gasUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+      Accept: 'application/json, text/plain, */*',
+      'User-Agent':
+        'Mozilla/5.0 (compatible; NaviSphere/1.0; +https://github.com/Kevinb59/NaviSphere)',
+    },
     body,
   });
 

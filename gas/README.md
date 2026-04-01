@@ -30,6 +30,8 @@ Le frontend appelle donc **`/api/gas`** sur **le même domaine** que le site ; l
 
 **Important :** le dépôt contient **`api/gas.ts`** (racine) et **`web/api/gas.ts`** (doublon). Si Vercel a **Root Directory** = racine du repo, c’est la première qui est utilisée ; si la racine est **`web`** (souvent auto-détecté pour Vite), seule **`web/api/gas.ts`** est déployée — les deux fichiers sont alignés pour couvrir les deux cas.
 
+Le **rewrite** SPA dans `vercel.json` utilise `/((?!api/).*)` → `index.html` pour éviter qu’un `POST /api/gas` soit confondu avec la page HTML (souvent **403** sur Vercel).
+
 En **développement local**, Vite proxy `/api/gas` vers cette même URL (voir `web/vite.config.ts`).
 
 Le corps reste en `Content-Type: text/plain` vers GAS, comme dans `example/Code.gs`.
