@@ -241,11 +241,11 @@ a {
    - Ajouter une sensation de déplacement "caméra en avant" (effet warp radial).
    2) Key variables:
    - `.lightspeed-warp-track`: fixe la direction radiale depuis le centre.
-   - `.lightspeed-warp-particle`: particule qui accélère vers l'extérieur avec légère croissance.
+   - `.lightspeed-warp-particle`: particule dont l’échelle suit la distance (`navisphere-warp-out` + `linear`).
    - `--warp-distance`: distance de fuite injectée dynamiquement.
    3) Logic flow:
-   - Les particules naissent près du centre, accélèrent vers l'extérieur et s'effacent,
-     ce qui donne l'impression qu'on les dépasse en avançant. */
+   - Les particules naissent petites près du centre, grossissent au fil de la translation vers `--warp-distance`,
+     puis s’effacent en bord de champ. */
 .lightspeed-warp-track {
   position: absolute;
   display: block;
@@ -265,9 +265,9 @@ a {
     0 0 22px rgba(180, 228, 255, 0.55);
   opacity: 0;
   animation-name: navisphere-warp-out;
-  animation-timing-function: cubic-bezier(0.22, 0.02, 0.15, 1);
+  animation-timing-function: linear;
   animation-iteration-count: infinite;
-  transform: translate3d(0, 0, 0) scale(0.55);
+  transform: translate3d(0, 0, 0) scale(0.28);
   filter: blur(0px);
 }
 
@@ -345,10 +345,10 @@ a {
    - Ajouter un événement "planète" qui traverse le champ visuel depuis le centre.
    2) Key variables:
    - `.planet-pass-track`: orientation de la trajectoire.
-   - `.planet-pass-body`: planète avec teinte/taille/distance pilotées par variables CSS.
+   - `.planet-pass-body`: planète avec `--planet-travel` / `--planet-size` ; croissance liée à la distance.
    3) Logic flow:
-   - Le track fixe la direction; la planète translate vers l'extérieur, grossit légèrement,
-     puis s'estompe pour simuler un dépassement par la caméra. */
+   - Le track fixe la direction ; la planète avance et grossit de façon proportionnelle (keyframes + `linear`),
+     puis s’estompe pour simuler un dépassement. */
 .planet-pass-track {
   position: absolute;
   display: block;
@@ -371,7 +371,7 @@ a {
   image-rendering: auto;
   box-shadow: none;
   animation-name: navisphere-planet-pass;
-  animation-timing-function: cubic-bezier(0.06, 0.01, 0.05, 1);
+  animation-timing-function: linear;
   animation-iteration-count: 1;
   animation-fill-mode: both;
   will-change: transform, opacity, filter;
@@ -425,63 +425,102 @@ a {
   }
 }
 
+/* 1) Purpose:
+   - Coupler translation radiale et échelle (particules warp) pour un effet de profondeur lisible.
+   2) Key variables: `--warp-distance` (px) ; paliers ~0,28 / 0,52 / 0,76 / 1 de la course.
+   3) Logic flow: `linear` sur l’animation + keyframes intermédiaires = taille ~proportionnelle à la distance. */
 @keyframes navisphere-warp-out {
   0% {
     opacity: 0;
-    transform: translate3d(0, 0, 0) scale(0.5);
+    transform: translate3d(0, 0, 0) scale(0.28);
     filter: blur(0px);
   }
-  10% {
+  6% {
     opacity: 1;
   }
-  86% {
-    opacity: 0.96;
+  28% {
+    opacity: 0.98;
+    transform: translate3d(calc(0.28 * var(--warp-distance)), 0, 0) scale(0.78);
+  }
+  52% {
+    opacity: 0.97;
+    transform: translate3d(calc(0.52 * var(--warp-distance)), 0, 0) scale(1.42);
+  }
+  76% {
+    opacity: 0.9;
+    transform: translate3d(calc(0.76 * var(--warp-distance)), 0, 0) scale(2.2);
+  }
+  92% {
+    opacity: 0.45;
   }
   100% {
     opacity: 0;
-    transform: translate3d(var(--warp-distance), 0, 0) scale(1.9);
-    filter: blur(0.7px);
+    transform: translate3d(var(--warp-distance), 0, 0) scale(3.1);
+    filter: blur(0.85px);
   }
 }
 
+/* 1) Purpose:
+   - Faire grossir la filante (traînée + tête) en même temps qu’elle s’éloigne sur le track.
+   2) Key variables: course max ~420px (axe local du track) ; paliers 30 % / 58 % / 85 % / 100 %.
+   3) Logic flow: `linear` conserve la cohérence distance ↔ échelle entre les keyframes. */
 @keyframes navisphere-meteor-run {
   0% {
     opacity: 0;
-    transform: translate3d(0, 0, 0) scale(0.72);
+    transform: translate3d(0, 0, 0) scale(0.62);
   }
-  8% {
+  7% {
     opacity: 0.95;
-    transform: translate3d(18px, 0, 0) scale(0.9);
   }
-  76% {
-    opacity: 0.62;
+  30% {
+    transform: translate3d(126px, 0, 0) scale(1.05);
+  }
+  58% {
+    opacity: 0.72;
+    transform: translate3d(244px, 0, 0) scale(1.52);
+  }
+  85% {
+    opacity: 0.48;
+    transform: translate3d(357px, 0, 0) scale(2);
   }
   100% {
     opacity: 0;
-    transform: translate3d(420px, 0, 0) scale(1.16);
+    transform: translate3d(420px, 0, 0) scale(2.4);
   }
 }
 
+/* 1) Purpose:
+   - Grossissement progressif de la planète aligné sur `--planet-travel` (effet de rapprochement / dépassement).
+   2) Key variables: paliers 22 % / 44 % / 66 % / 82 % / 100 % de la distance ; échelle finale forte.
+   3) Logic flow: `calc(fraction * var(--planet-travel))` synchronise translation et scale sur toute la course. */
 @keyframes navisphere-planet-pass {
   0% {
     opacity: 0;
-    transform: translate3d(0, 0, 0) scale(0.45);
+    transform: translate3d(0, 0, 0) scale(0.38);
     filter: blur(0px);
   }
-  10% {
+  8% {
     opacity: 0.92;
-    filter: blur(0px);
   }
-  86% {
+  22% {
+    transform: translate3d(calc(0.22 * var(--planet-travel)), 0, 0) scale(1.1);
+  }
+  44% {
+    transform: translate3d(calc(0.44 * var(--planet-travel)), 0, 0) scale(2.55);
+  }
+  66% {
+    transform: translate3d(calc(0.66 * var(--planet-travel)), 0, 0) scale(5.1);
+  }
+  82% {
     opacity: 0.88;
-    filter: blur(0px);
+    transform: translate3d(calc(0.82 * var(--planet-travel)), 0, 0) scale(7.6);
   }
-  96% {
-    opacity: 0.84;
+  94% {
+    opacity: 0.7;
   }
   100% {
     opacity: 0;
-    transform: translate3d(var(--planet-travel), 0, 0) scale(10);
+    transform: translate3d(var(--planet-travel), 0, 0) scale(10.5);
     filter: blur(0px);
   }
 }
