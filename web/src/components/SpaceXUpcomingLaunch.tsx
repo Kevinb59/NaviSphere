@@ -6,8 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 // 2) Key variables: réponse API `results`, `targetMs` pour le timer, segments `DD - HH:MM:SS`.
 // 3) Logic flow: fetch au montage → filtre fournisseur SpaceX → tick 1 s → chaque chiffre animé via `motion` si la valeur change.
 
+// 1) Purpose:
+// - `limit` un peu large : après filtre « date dans le futur », il peut rester peu d’entrées SpaceX.
+// 2) Key variables: `ordering=net` = plus proche d’abord côté API ; on re-trie côté client après filtre.
+// 3) Logic flow: voir `pickNextSpaceXLaunch`.
 const LL2_UPCOMING_URL =
-  'https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=5&ordering=net&search=SpaceX';
+  'https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=40&ordering=net&search=SpaceX';
 
 type LL2Launch = {
   name?: string;
@@ -17,6 +21,22 @@ type LL2Launch = {
   pad?: { name?: string; location?: { name?: string } };
   launch_service_provider?: { name?: string };
 };
+
+// 1) Purpose:
+// - Choisir le **prochain** lancement SpaceX dont `net` est encore dans le futur (évite d’afficher celui d’il y a quelques heures).
+// 2) Key variables: `nowMs` = référence temps (souvent `Date.now()` au moment du fetch).
+// 3) Logic flow: filtre fournisseur + `net` valide et `> nowMs` → tri croissant sur `net` → premier.
+function pickNextSpaceXLaunch(results: LL2Launch[], nowMs: number): LL2Launch | undefined {
+  const candidates = results
+    .filter((x) => x.launch_service_provider?.name === 'SpaceX')
+    .map((launch) => {
+      const t = launch.net ? new Date(launch.net).getTime() : NaN;
+      return { launch, t };
+    })
+    .filter((x): x is { launch: LL2Launch; t: number } => Number.isFinite(x.t) && x.t > nowMs)
+    .sort((a, b) => a.t - b.t);
+  return candidates[0]?.launch;
+}
 
 // 1) Purpose:
 // - Formater le délai restant comme l’exemple utilisateur : `JJ - HH:MM:SS`.
@@ -104,7 +124,7 @@ export function SpaceXUpcomingLaunch() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as { results?: LL2Launch[] };
         const list = data.results ?? [];
-        const launch = list.find((x) => x.launch_service_provider?.name === 'SpaceX');
+        const launch = pickNextSpaceXLaunch(list, Date.now());
         if (cancelled) return;
         if (!launch) {
           setError('Aucun lancement SpaceX à venir.');
