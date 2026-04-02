@@ -68,7 +68,7 @@ function CountdownRolling({ text }: { text: string }) {
   const chars = useMemo(() => Array.from(text), [text]);
   return (
     <div
-      className="mt-2 flex flex-wrap items-baseline text-[clamp(13px,2.8vw,15px)] leading-tight tracking-wide text-white/90"
+      className="mt-2 flex flex-wrap items-baseline text-[clamp(13px,2.8vw,15px)] leading-tight tracking-wide text-white"
       style={{ fontVariantNumeric: 'tabular-nums' }}
     >
       {chars.map((ch, i) => (
@@ -147,17 +147,29 @@ export function SpaceXUpcomingLaunch() {
 
   return (
     <div
-      className="mt-4 text-left font-['Unica_One',sans-serif] text-[13px] leading-snug text-white/80"
+      className="mt-4 text-left font-['Unica_One',sans-serif] text-[13px] leading-snug text-white"
       id="spacex-upcoming-launch"
     >
-      <p className="text-[11px] uppercase tracking-[0.24em] text-white/45">UPCOMING LAUNCH</p>
-      {loading && <p className="mt-2 text-white/50">Chargement…</p>}
-      {!loading && error && <p className="mt-2 text-white/55">{error}</p>}
+      {/* 1) Purpose:
+          - Logo SVG (bleu/gris d’origine) rendu blanc via `brightness-0 invert`, juste avant le titre.
+          2) Key variables: hauteur ~20px pour s’aligner avec la ligne de titre.
+          3) Logic flow: `flex-wrap` si le volet est très étroit. */}
+      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <img
+          src="/assets/images/tesla/SpaceX-Logo.svg"
+          alt="SpaceX"
+          className="h-5 w-auto max-w-[min(100%,140px)] shrink-0 brightness-0 invert"
+          draggable={false}
+        />
+        <p className="text-[11px] uppercase tracking-[0.24em] text-white">UPCOMING LAUNCH</p>
+      </div>
+      {loading && <p className="mt-2 text-white">Chargement…</p>}
+      {!loading && error && <p className="mt-2 text-white">{error}</p>}
       {!loading && !error && (
         <>
-          <p className="mt-2 text-white/88">{mission || '—'}</p>
-          <p className="mt-1 text-white/72">{vehicle || '—'}</p>
-          <p className="mt-1 text-white/65">
+          <p className="mt-2 text-white">{mission || '—'}</p>
+          <p className="mt-1 text-white">{vehicle || '—'}</p>
+          <p className="mt-1 text-white">
             {padName}
             {padName && locationName ? <br /> : null}
             {locationName}
