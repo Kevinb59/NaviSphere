@@ -100,7 +100,7 @@ function CountdownRolling({ text }: { text: string }) {
   const chars = useMemo(() => Array.from(text), [text]);
   return (
     <div
-      className="mt-2 flex flex-wrap items-baseline text-[clamp(13px,2.8vw,15px)] leading-tight tracking-wide text-white"
+      className="mt-2 flex flex-wrap items-baseline text-[clamp(16px,3.5vw,19px)] leading-tight tracking-wide text-white"
       style={{ fontVariantNumeric: 'tabular-nums' }}
     >
       {chars.map((ch, i) => (
@@ -179,23 +179,26 @@ export function SpaceXUpcomingLaunch() {
 
   const blueprintSrc = useMemo(() => (vehicle ? vehicleBlueprintSrc(vehicle) : null), [vehicle]);
 
+  // 1) Purpose: marge gauche (décalage vers la droite) + typo ~×1,25 ; colonne droite alignée dans App.
+  // 2) Key variables: `ml-3` / `md:ml-4`, `text-[16.25px]` (= 13px×1,25).
+  // 3) Logic flow: retour du conteneur racine avec ces classes.
   return (
     <div
-      className="mt-4 text-left font-['Unica_One',sans-serif] text-[13px] leading-snug text-white"
+      className="mt-4 ml-3 text-left font-['Unica_One',sans-serif] text-[16.25px] leading-snug text-white md:ml-4"
       id="spacex-upcoming-launch"
     >
       {/* 1) Purpose:
           - Logo SVG (bleu/gris d’origine) rendu blanc via `brightness-0 invert`, juste avant le titre.
-          2) Key variables: hauteur ~20px pour s’aligner avec la ligne de titre.
+          2) Key variables: hauteur ~25px (~+25 % vs 20px) pour rester proportionnel au corps agrandi.
           3) Logic flow: `flex-wrap` si le volet est très étroit. */}
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
         <img
           src="/assets/images/tesla/SpaceX-Logo.svg"
           alt="SpaceX"
-          className="h-5 w-auto max-w-[min(100%,140px)] shrink-0 brightness-0 invert"
+          className="h-[25px] w-auto max-w-[min(100%,175px)] shrink-0 brightness-0 invert"
           draggable={false}
         />
-        <p className="text-[11px] uppercase tracking-[0.24em] text-white">UPCOMING LAUNCH</p>
+        <p className="text-[13.75px] uppercase tracking-[0.24em] text-white">UPCOMING LAUNCH</p>
       </div>
       {loading && <p className="mt-2 text-white">Chargement…</p>}
       {!loading && error && <p className="mt-2 text-white">{error}</p>}
@@ -214,7 +217,7 @@ export function SpaceXUpcomingLaunch() {
               2) Key variables: `blueprintSrc` dérivé de `vehicle` (voir `vehicleBlueprintSrc`).
               3) Logic flow: pas d’image si aucune règle ne matche. */}
           {blueprintSrc ? (
-            <div className="mt-4 w-full max-w-[min(100%,220px)]">
+            <div className="mt-4 w-full max-w-[min(100%,275px)]">
               <img
                 src={blueprintSrc}
                 alt=""

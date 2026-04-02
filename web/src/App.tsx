@@ -1367,11 +1367,14 @@ export default function TeslaFuturisticPortalConcept() {
             </div>
           </motion.div>
 
+          {/* 1) Purpose: colonne droite ~×1,25 pour l’encart SpaceX agrandi.
+              2) Key variables: `clamp(210px,22.5vw,310px)` — reprendre ce clamp dans `right-[calc(...)]` du panneau central.
+              3) Logic flow: alignement visuel sans chevauchement du contenu central. */}
           <motion.div
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.45, delay: 0.08 }}
-            className="absolute right-4 top-20 z-20 w-[clamp(168px,18vw,248px)] space-y-4"
+            className="absolute right-4 top-20 z-20 w-[clamp(210px,22.5vw,310px)] space-y-4"
           >
             <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
               <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Accès véhicule</p>
@@ -1417,7 +1420,7 @@ export default function TeslaFuturisticPortalConcept() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 14, scale: 0.985 }}
                 transition={{ duration: 0.28, ease: 'easeOut' }}
-                className="absolute left-[calc(1.5rem+clamp(208px,22vw,268px)+0.5rem)] right-[calc(1rem+clamp(168px,18vw,248px)+0.5rem)] top-4 bottom-[10%] z-30 rounded-[20px] bg-black/30 p-5 ring-1 ring-white/10 backdrop-blur-2xl"
+                className="absolute left-[calc(1.5rem+clamp(208px,22vw,268px)+0.5rem)] right-[calc(1rem+clamp(210px,22.5vw,310px)+0.5rem)] top-4 bottom-[10%] z-30 rounded-[20px] bg-black/30 p-5 ring-1 ring-white/10 backdrop-blur-2xl"
               >
                 {/* 1) Purpose:
                     - Donner une ouverture/fermeture fluide au panneau central (Streaming ou Musique).
