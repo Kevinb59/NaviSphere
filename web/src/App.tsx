@@ -23,6 +23,7 @@ import { loadLocalFavorites, saveLocalFavorites } from './auth/localFavorites';
 import { DockFavoritesBar } from './components/DockFavoritesBar';
 import { FavoriteConfirmModal } from './components/FavoriteConfirmModal';
 import { ServiceCatalogTile } from './components/ServiceCatalogTile';
+import { SpaceXUpcomingLaunch } from './components/SpaceXUpcomingLaunch';
 import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
 // 1) Purpose:
@@ -1404,6 +1405,12 @@ export default function TeslaFuturisticPortalConcept() {
                 </button>
               </div>
             </div>
+
+            {/* 1) Purpose:
+                - Prochain lancement SpaceX (Launch Library 2), texte seul sous Recherche web, police Unica One.
+                2) Key variables: composant autonome fetch + compte à rebours animé.
+                3) Logic flow: pas de cadre ; API publique côté client (CORS selon navigateur). */}
+            <SpaceXUpcomingLaunch />
           </motion.div>
 
           <AnimatePresence>
