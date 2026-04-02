@@ -1302,6 +1302,36 @@ export default function TeslaFuturisticPortalConcept() {
             </div>
 
             <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Recherche web</p>
+              {/* 1) Purpose:
+                  - Même encart qu’à droite avant refonte : Google depuis la colonne gauche.
+                  2) Key variables: `googleSearchQuery`, `openGoogleSearch`.
+                  3) Logic flow: saisie + bouton ou Entrée → redirection Google. */}
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2 rounded-[12px] bg-black/30 px-3 py-3 ring-1 ring-white/10">
+                  <Search className="h-4 w-4 text-white/60" />
+                  <input
+                    type="text"
+                    value={googleSearchQuery}
+                    onChange={(event) => setGoogleSearchQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') openGoogleSearch();
+                    }}
+                    placeholder="Rechercher sur Google..."
+                    className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={openGoogleSearch}
+                  className="w-full rounded-[12px] bg-white/[0.09] px-3 py-2 text-sm font-medium text-white ring-1 ring-white/10 transition hover:bg-white/[0.14]"
+                >
+                  Rechercher
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
               <div className="mb-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Accès rapides</p>
@@ -1373,41 +1403,8 @@ export default function TeslaFuturisticPortalConcept() {
               </div>
             </div>
 
-            <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Recherche web</p>
-              {/* 1) Purpose:
-                  - Remplacer l'encart "Récents" par une recherche web directe.
-                  2) Key variables:
-                  - `googleSearchQuery`: texte de la requête.
-                  - `openGoogleSearch()`: redirection Google sur la page courante.
-                  3) Logic flow:
-                  - L'utilisateur saisit un mot-clé puis clique sur "Rechercher" pour être redirigé vers Google. */}
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center gap-2 rounded-[12px] bg-black/30 px-3 py-3 ring-1 ring-white/10">
-                  <Search className="h-4 w-4 text-white/60" />
-                  <input
-                    type="text"
-                    value={googleSearchQuery}
-                    onChange={(event) => setGoogleSearchQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') openGoogleSearch();
-                    }}
-                    placeholder="Rechercher sur Google..."
-                    className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={openGoogleSearch}
-                  className="w-full rounded-[12px] bg-white/[0.09] px-3 py-2 text-sm font-medium text-white ring-1 ring-white/10 transition hover:bg-white/[0.14]"
-                >
-                  Rechercher
-                </button>
-              </div>
-            </div>
-
             {/* 1) Purpose:
-                - Prochain lancement SpaceX (Launch Library 2), texte seul sous Recherche web, police Unica One.
+                - Prochain lancement SpaceX (Launch Library 2), sous Accès véhicule, police Unica One.
                 2) Key variables: composant autonome fetch + compte à rebours animé.
                 3) Logic flow: pas de cadre ; API publique côté client (CORS selon navigateur). */}
             <SpaceXUpcomingLaunch />

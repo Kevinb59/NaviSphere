@@ -39,6 +39,18 @@ function pickNextSpaceXLaunch(results: LL2Launch[], nowMs: number): LL2Launch | 
 }
 
 // 1) Purpose:
+// - Associer un schéma blueprint au lanceur (texte API) : Starship, Falcon Heavy ou Falcon 9.
+// 2) Key variables: `vehicle` = `full_name` / `name` de la configuration fusée.
+// 3) Logic flow: `starship` avant `heavy` pour éviter « Super Heavy » → illustration Falcon Heavy à tort.
+function vehicleBlueprintSrc(vehicle: string): string | null {
+  const v = vehicle.toLowerCase();
+  if (v.includes('starship')) return '/assets/images/StarShip2.png';
+  if (v.includes('heavy')) return '/assets/images/FalconHeavy.png';
+  if (v.includes('9')) return '/assets/images/Falcon9.png';
+  return null;
+}
+
+// 1) Purpose:
 // - Formater le délai restant comme l’exemple utilisateur : `JJ - HH:MM:SS`.
 // 2) Key variables: `totalSeconds` entier ≥ 0.
 // 3) Logic flow: découpage j/h/m/s avec `padStart(2)`.
@@ -165,6 +177,8 @@ export function SpaceXUpcomingLaunch() {
   const countdownText =
     targetMs === null ? '00 - 00:00:00' : formatCountdown((targetMs - nowTick) / 1000);
 
+  const blueprintSrc = useMemo(() => (vehicle ? vehicleBlueprintSrc(vehicle) : null), [vehicle]);
+
   return (
     <div
       className="mt-4 text-left font-['Unica_One',sans-serif] text-[13px] leading-snug text-white"
@@ -195,6 +209,20 @@ export function SpaceXUpcomingLaunch() {
             {locationName}
           </p>
           {targetMs !== null && <CountdownRolling text={countdownText} />}
+          {/* 1) Purpose:
+              - Illustration blueprint sous le bloc texte / compte à rebours selon le véhicule détecté.
+              2) Key variables: `blueprintSrc` dérivé de `vehicle` (voir `vehicleBlueprintSrc`).
+              3) Logic flow: pas d’image si aucune règle ne matche. */}
+          {blueprintSrc ? (
+            <div className="mt-4 w-full max-w-[min(100%,220px)]">
+              <img
+                src={blueprintSrc}
+                alt=""
+                className="h-auto w-full object-contain object-left opacity-95"
+                draggable={false}
+              />
+            </div>
+          ) : null}
         </>
       )}
     </div>
