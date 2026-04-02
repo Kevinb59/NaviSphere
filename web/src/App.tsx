@@ -1235,13 +1235,15 @@ export default function TeslaFuturisticPortalConcept() {
 
               {/* 1) Purpose:
                   - Silhouette de vaisseau ancrée au bas de la carte, sous halo / vignette pour la profondeur.
-                  2) Key variables: `z-[45]` = au-dessus des planètes (40), sous `.speed-edge-aura` (50) et `.speed-center-vignette` (51).
-                  3) Logic flow: image statique `public/assets/images/starship.png`, sans interaction. */}
+                  2) Key variables: asset natif 1000×500 px ; `z-[45]` entre planètes (40) et aura (50–51).
+                  3) Logic flow: `width`/`height` = taille réelle du PNG ; `max-w-full` réduit si la carte est plus étroite. */}
               <div className="absolute inset-x-0 bottom-0 z-[45] flex items-end justify-center pointer-events-none">
                 <img
                   src="/assets/images/starship.png"
                   alt=""
-                  className="h-auto max-h-[min(36vh,340px)] w-[min(92%,560px)] select-none object-contain object-bottom opacity-[0.92]"
+                  width={1000}
+                  height={500}
+                  className="h-auto w-[1000px] max-w-full select-none object-contain object-bottom opacity-[0.92]"
                   draggable={false}
                 />
               </div>
