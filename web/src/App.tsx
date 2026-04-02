@@ -1125,7 +1125,11 @@ export default function TeslaFuturisticPortalConcept() {
 
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute inset-0 bg-[linear-gradient(180deg,#181d24_0%,#12171d_48%,#10151b_100%)]" />
-            <div className="pointer-events-none absolute inset-0 opacity-80">
+            {/* 1) Purpose:
+                - Champ étoiles / nébuleuses / planètes assourdi (80 %) sans le vaisseau pour éviter qu’une planète se lise à travers le PNG.
+                2) Key variables: `z-[5]` sous le starship (`z-[15]`) et sous halo (`z-[25]`).
+                3) Logic flow: le vaisseau et le halo sont des frères séparés pour opacités indépendantes. */}
+            <div className="pointer-events-none absolute inset-0 z-[5] opacity-80">
               {/* Etoiles scintillantes */}
               <div className="lightspeed-starfield z-[5]">
                 {starNodes.map((star) => (
@@ -1232,25 +1236,30 @@ export default function TeslaFuturisticPortalConcept() {
                   </span>
                 )}
               </div>
+            </div>
 
-              {/* 1) Purpose:
-                  - Silhouette de vaisseau ancrée au bas de la carte, sous halo / vignette pour la profondeur.
-                  2) Key variables: asset natif 1000×500 px ; `z-[45]` entre planètes (40) et aura (50–51).
-                  3) Logic flow: `width`/`height` = taille réelle du PNG ; `max-w-full` réduit si la carte est plus étroite. */}
-              <div className="absolute inset-x-0 bottom-0 z-[45] flex items-end justify-center pointer-events-none">
-                <img
-                  src="/assets/images/starship.png"
-                  alt=""
-                  width={1000}
-                  height={500}
-                  className="h-auto w-[1000px] max-w-full select-none object-contain object-bottom opacity-[0.92]"
-                  draggable={false}
-                />
-              </div>
+            {/* 1) Purpose:
+                - Vaisseau en opacité pleine (hors calque 80 %) pour masquer nettement les planètes qui passent derrière.
+                2) Key variables: PNG 1000×500 ; `isolation-isolate` + `mix-blend-normal` pour éviter tout mélange avec les couches animées.
+                3) Logic flow: frère du bloc `opacity-80` ; `z-[15]` au-dessus des planètes (dans le calque 80 %). */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[15] flex items-end justify-center [isolation:isolate]">
+              <img
+                src="/assets/images/starship.png"
+                alt=""
+                width={1000}
+                height={500}
+                className="h-auto w-[1000px] max-w-full select-none object-contain object-bottom mix-blend-normal opacity-100"
+                draggable={false}
+              />
+            </div>
 
-              {/* Dégradés centre/bords (toujours au premier plan) */}
-              <div className="speed-edge-aura z-[50]" />
-              <div className="speed-center-vignette z-[51]" />
+            {/* 1) Purpose:
+                - Halo + vignette comme avant (ré-appliquer ~80 % sur le groupe pour conserver la luminosité globale).
+                2) Key variables: `z-[25]` au-dessus du vaisseau.
+                3) Logic flow: `mix-blend-mode: screen` sur `.speed-edge-aura` reste inchangé dans `index.css`. */}
+            <div className="pointer-events-none absolute inset-0 z-[25] opacity-80">
+              <div className="speed-edge-aura" />
+              <div className="speed-center-vignette" />
             </div>
 
             <div className="absolute left-[6%] top-[16%] h-[58%] w-[44%] rotate-[12deg] rounded-[26px] border border-white/5 bg-[radial-gradient(circle,rgba(255,255,255,0.05),transparent_62%)] blur-2xl" />
