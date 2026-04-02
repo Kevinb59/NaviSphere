@@ -179,12 +179,12 @@ export function SpaceXUpcomingLaunch() {
 
   const blueprintSrc = useMemo(() => (vehicle ? vehicleBlueprintSrc(vehicle) : null), [vehicle]);
 
-  // 1) Purpose: marge gauche (décalage vers la droite) + typo ~×1,25 ; colonne droite alignée dans App.
-  // 2) Key variables: `ml-3` / `md:ml-4`, `text-[16.25px]` (= 13px×1,25).
-  // 3) Logic flow: retour du conteneur racine avec ces classes.
+  // 1) Purpose: marge gauche + typo ~×1,25 ; `min-w-0 max-w-full` pour que les images ne forcent pas la largeur de colonne.
+  // 2) Key variables: `ml-3` / `md:ml-4`, `text-[16.25px]`.
+  // 3) Logic flow: conteneur borné à la largeur du parent (même clamp que la colonne gauche dans App).
   return (
     <div
-      className="mt-4 ml-3 text-left font-['Unica_One',sans-serif] text-[16.25px] leading-snug text-white md:ml-4"
+      className="mt-4 ml-3 min-w-0 max-w-full text-left font-['Unica_One',sans-serif] text-[16.25px] leading-snug text-white md:ml-4"
       id="spacex-upcoming-launch"
     >
       {/* 1) Purpose:
@@ -195,7 +195,7 @@ export function SpaceXUpcomingLaunch() {
         <img
           src="/assets/images/tesla/SpaceX-Logo.svg"
           alt="SpaceX"
-          className="h-[25px] w-auto max-w-[min(100%,175px)] shrink-0 brightness-0 invert"
+          className="h-[25px] w-auto max-w-full shrink-0 brightness-0 invert"
           draggable={false}
         />
         <p className="text-[13.75px] uppercase tracking-[0.24em] text-white">UPCOMING LAUNCH</p>
@@ -213,15 +213,15 @@ export function SpaceXUpcomingLaunch() {
           </p>
           {targetMs !== null && <CountdownRolling text={countdownText} />}
           {/* 1) Purpose:
-              - Illustration blueprint sous le bloc texte / compte à rebours selon le véhicule détecté.
-              2) Key variables: `blueprintSrc` dérivé de `vehicle` (voir `vehicleBlueprintSrc`).
+              - Blueprint limité à la largeur utile de la colonne (pas de min-width intrinsèque qui élargit le layout).
+              2) Key variables: `min-w-0` + `w-full` pour que `object-contain` réduise l’image si besoin.
               3) Logic flow: pas d’image si aucune règle ne matche. */}
           {blueprintSrc ? (
-            <div className="mt-4 w-full max-w-[min(100%,275px)]">
+            <div className="mt-4 w-full min-w-0 max-w-full">
               <img
                 src={blueprintSrc}
                 alt=""
-                className="h-auto w-full object-contain object-left opacity-95"
+                className="h-auto w-full max-w-full object-contain object-left opacity-95"
                 draggable={false}
               />
             </div>
