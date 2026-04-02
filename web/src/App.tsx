@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BatteryCharging,
   ChevronDown,
@@ -23,6 +23,7 @@ import { loadLocalFavorites, saveLocalFavorites } from './auth/localFavorites';
 import { DockFavoritesBar } from './components/DockFavoritesBar';
 import { FavoriteConfirmModal } from './components/FavoriteConfirmModal';
 import { ServiceCatalogTile } from './components/ServiceCatalogTile';
+import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
 // 1) Purpose:
 // - Centraliser l'URL principale pour éviter les liens en dur dispersés.
@@ -276,35 +277,31 @@ const rightMenuItems = [
 ];
 
 // 1) Purpose:
-// - Charger automatiquement toutes les textures nommées `planet*.png` sans maintenance manuelle.
-// 2) Key variables:
-// - `planetTextureModules`: mapping Vite des chemins de fichiers vers URL publiques.
-// - `planetTextures`: tableau final d'URL trié par index numérique (planet2 < planet10).
-// 3) Logic flow:
-// - On récupère tous les fichiers correspondants, on trie selon le numéro extrait du nom,
-//   puis on transforme le mapping en simple tableau d'URL utilisé par l'animation.
-const planetTextureModules = import.meta.glob('/public/assets/images/space/planet*.png', {
-  eager: true,
-  import: 'default',
-}) as Record<string, string>;
-
-const planetTextures = Object.entries(planetTextureModules)
-  .sort(([firstPath], [secondPath]) => {
-    const firstMatch = firstPath.match(/planet(\d+)\.png$/i);
-    const secondMatch = secondPath.match(/planet(\d+)\.png$/i);
-    const firstIndex = firstMatch ? Number(firstMatch[1]) : Number.MAX_SAFE_INTEGER;
-    const secondIndex = secondMatch ? Number(secondMatch[1]) : Number.MAX_SAFE_INTEGER;
-    return firstIndex - secondIndex;
-  })
-  .map(([, textureUrl]) => textureUrl);
+// - URLs des textures planètes dans `public/` (pas d’`import.meta.glob` sur `public/` → évite écran blanc Vite).
+// 2) Key variables: indices alignés sur les fichiers réellement présents dans `public/assets/images/space/`.
+// 3) Logic flow: liste explicite ; ajouter un numéro ici quand une nouvelle `planetN.png` est ajoutée.
+const PLANET_TEXTURE_INDICES = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+const planetTextures = PLANET_TEXTURE_INDICES.map((n) => `/assets/images/space/planet${n}.png`);
 
 function logoUrl(domain: string) {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=256`;
 }
 
+// 1) Purpose:
+// - Formater l’heure locale pour l’horloge d’en-tête (hors composant pour l’initialiseur `useState`).
+// 2) Key variables: locale `fr-FR`, heure / minute / seconde à 2 chiffres.
+// 3) Logic flow: appelé au premier rendu et chaque tick d’intervalle.
+function formatCurrentTimeFr() {
+  return new Date().toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 export default function TeslaFuturisticPortalConcept() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentTime, setCurrentTime] = useState('');
+  const [currentTime, setCurrentTime] = useState(() => formatCurrentTimeFr());
   const [isDockCollapsed, setIsDockCollapsed] = useState(true);
   const [activeCenterCategory, setActiveCenterCategory] = useState<string | null>(null);
   const [googleSearchQuery, setGoogleSearchQuery] = useState('');
@@ -439,8 +436,14 @@ export default function TeslaFuturisticPortalConcept() {
           setFavoriteOrder(normalizeFavoritesFromSheet(loadLocalFavorites(alias)));
         });
     } else {
-      setSessionCredentials({ alias, password: mdp });
-      setFavoriteOrder(normalizeFavoritesFromSheet(loadLocalFavorites(alias)));
+      // 1) Purpose:
+      // - Éviter `setState` synchrone direct dans le corps d’effet (règle ESLint react-hooks/set-state-in-effect).
+      // 2) Key variables: même restauration que la connexion manuelle sans GAS.
+      // 3) Logic flow: `startTransition` reporte la mise à jour sans cascade de rendu critique.
+      startTransition(() => {
+        setSessionCredentials({ alias, password: mdp });
+        setFavoriteOrder(normalizeFavoritesFromSheet(loadLocalFavorites(alias)));
+      });
     }
   }, []);
 
@@ -462,23 +465,12 @@ export default function TeslaFuturisticPortalConcept() {
   }, [authModal, closeAuthModal]);
 
   // 1) Purpose:
-  // - Gérer une horloge locale exacte affichée en temps réel dans l'entête.
-  // 2) Key variables:
-  // - `currentTime`: état texte de l'heure courante.
-  // - `formatCurrentTime`: formateur réutilisable pour l'heure locale.
-  // 3) Logic flow:
-  // - On met à jour immédiatement l'heure, puis on la rafraîchit chaque seconde via un intervalle nettoyé au démontage.
-  const formatCurrentTime = () =>
-    new Date().toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-
+  // - Rafraîchir l’horloge d’en-tête chaque seconde (valeur initiale via `useState(formatCurrentTimeFr)`).
+  // 2) Key variables: `formatCurrentTimeFr` définie au niveau module.
+  // 3) Logic flow: pas de `setState` synchrone dans l’effet — uniquement `setInterval` → callbacks asynchrones.
   useEffect(() => {
-    setCurrentTime(formatCurrentTime());
     const clockIntervalId = window.setInterval(() => {
-      setCurrentTime(formatCurrentTime());
+      setCurrentTime(formatCurrentTimeFr());
     }, 1000);
 
     return () => window.clearInterval(clockIntervalId);
@@ -642,25 +634,10 @@ export default function TeslaFuturisticPortalConcept() {
   const sortedSearchServices = sortServicesByName(filteredSearchServices);
 
   // 1) Purpose:
-  // - Générer un fond d'étoiles pseudo-aléatoire, sans motif répétitif visible.
-  // 2) Key variables:
-  // - `starNodes`: étoiles individuelles (position, taille, opacité, tempo de scintillement).
-  // - `constellationLinks`: segments légers pour suggérer des constellations.
-  // 3) Logic flow:
-  // - On calcule une seule fois les données visuelles au montage via `useMemo`,
-  //   puis on les rend dans une couche dédiée du background.
-  const starNodes = useMemo(() => {
-    return Array.from({ length: 110 }, (_, index) => {
-      const left = Math.random() * 100;
-      const top = Math.random() * 100;
-      const size = 0.8 + Math.random() * 2.4;
-      const opacity = 0.2 + Math.random() * 0.6;
-      const duration = 2.4 + Math.random() * 5.2;
-      const delay = Math.random() * 6;
-
-      return { id: `star-${index}`, left, top, size, opacity, duration, delay };
-    });
-  }, []);
+  // - Fond d’étoiles pseudo-aléatoire figé au premier montage (pas de `Math.random` dans le rendu).
+  // 2) Key variables: `starNodes` = données pour `.lightspeed-star-node` ; générées dans `spaceFieldRandom.ts`.
+  // 3) Logic flow: `useState(() => buildStarFieldNodes(110))` exécute le tirage une fois par visite, conforme ESLint.
+  const [starNodes] = useState(() => buildStarFieldNodes(110));
 
 
   // 1) Purpose:
@@ -716,9 +693,11 @@ export default function TeslaFuturisticPortalConcept() {
     let clearPlanetTimerId: ReturnType<typeof setTimeout> | null = null;
 
     const scheduleNextPlanet = () => {
+      if (planetTextures.length === 0) return;
       const nextPlanetDelayMs = 18000 + Math.random() * 28000;
       nextPlanetTimerId = window.setTimeout(() => {
         const durationMs = 5200 + Math.random() * 2600;
+        const texturePick = planetTextures[Math.floor(Math.random() * planetTextures.length)]!;
         setActivePlanet({
           id: `planet-${Date.now()}`,
           left: 49 + (Math.random() * 4 - 2),
@@ -728,7 +707,7 @@ export default function TeslaFuturisticPortalConcept() {
           durationMs,
           size: 18 + Math.random() * 24,
           hue: 190 + Math.random() * 70,
-          imageUrl: planetTextures[Math.floor(Math.random() * planetTextures.length)],
+          imageUrl: texturePick,
         });
 
         clearPlanetTimerId = window.setTimeout(() => {
@@ -747,26 +726,10 @@ export default function TeslaFuturisticPortalConcept() {
   }, []);
 
   // 1) Purpose:
-  // - Simuler un flux continu d'étoiles qu'on "dépasse" en avançant.
-  // 2) Key variables:
-  // - `warpParticles`: particules partant du centre vers l'extérieur.
-  // - `distance`: distance radiale de fuite pour accentuer la perspective.
-  // 3) Logic flow:
-  // - Chaque particule démarre quasi au centre, part dans une direction aléatoire,
-  //   accélère vers l'extérieur et disparaît, créant l'illusion de mouvement de la caméra.
-  const warpParticles = useMemo(() => {
-    return Array.from({ length: 12 }, (_, index) => {
-      const left = 49.5 + (Math.random() * 3 - 1.5);
-      const top = 49.5 + (Math.random() * 3 - 1.5);
-      const angle = Math.random() * 360;
-      const distance = 1040 + Math.random() * 840;
-      const duration = 2.6 + Math.random() * 2.4;
-      const delay = Math.random() * 4.5;
-      const size = 1 + Math.random() * 1.2;
-
-      return { id: `warp-${index}`, left, top, angle, distance, duration, delay, size };
-    });
-  }, []);
+  // - Particules « warp » figées au montage ; tirage aléatoire délégué à `buildWarpParticles` (hors rendu React).
+  // 2) Key variables: `warpParticles` = positions / angles / durées pour `.lightspeed-warp-particle`.
+  // 3) Logic flow: `useState(() => buildWarpParticles(12))` comme pour le champ d’étoiles.
+  const [warpParticles] = useState(() => buildWarpParticles(12));
 
   // 1) Purpose:
   // - Déclencher l'ouverture "plein écran Tesla" via la redirection YouTube.
@@ -1268,6 +1231,19 @@ export default function TeslaFuturisticPortalConcept() {
                     />
                   </span>
                 )}
+              </div>
+
+              {/* 1) Purpose:
+                  - Silhouette de vaisseau ancrée au bas de la carte, sous halo / vignette pour la profondeur.
+                  2) Key variables: `z-[45]` = au-dessus des planètes (40), sous `.speed-edge-aura` (50) et `.speed-center-vignette` (51).
+                  3) Logic flow: image statique `public/assets/images/starship.png`, sans interaction. */}
+              <div className="absolute inset-x-0 bottom-0 z-[45] flex items-end justify-center pointer-events-none">
+                <img
+                  src="/assets/images/starship.png"
+                  alt=""
+                  className="h-auto max-h-[min(36vh,340px)] w-[min(92%,560px)] select-none object-contain object-bottom opacity-[0.92]"
+                  draggable={false}
+                />
               </div>
 
               {/* Dégradés centre/bords (toujours au premier plan) */}
