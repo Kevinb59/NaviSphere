@@ -29,15 +29,15 @@ import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRan
 // 1) Purpose:
 // - Centraliser l'URL principale pour éviter les liens en dur dispersés.
 // 2) Key variables:
-// - `THEATER_ENTRY_URL`: URL cible du portail Theater.
-// - `FULLSCREEN_REDIRECT_URL`: URL de redirection YouTube compatible usage Tesla Theater.
+// - `THEATER_ENTRY_URL`: URL cible après la page intermédiaire YouTube (déploiement NaviSphere).
+// - `FULLSCREEN_REDIRECT_URL`: `youtube.com/redirect?q=…` requis pour l’ouverture plein écran Tesla Theater.
 // 3) Logic flow:
-// - On définit d'abord la cible principale, puis on génère une URL de redirection réutilisable.
-const THEATER_ENTRY_URL = 'https://www.s3xytheater.fr/';
+// - On encode la cible HTTPS, puis on réutilise le lien YouTube pour le raccourci Fullscreen.
+const THEATER_ENTRY_URL = 'https://navi-sphere.vercel.app/';
 const FULLSCREEN_REDIRECT_URL = `https://www.youtube.com/redirect?q=${encodeURIComponent(THEATER_ENTRY_URL)}`;
 
 // 1) Purpose:
-// - Centraliser tous les services vidéo listés dans la catégorie Cinéma de s3xytheater.
+// - Centraliser les services du dock (streaming, musique, etc.) pour filtres et favoris.
 // 2) Key variables:
 // - `name`: libellé affiché dans le dock.
 // - `domain`: domaine utilisé pour récupérer le favicon.
