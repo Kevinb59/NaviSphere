@@ -15,15 +15,15 @@ export type StarFieldNode = {
 
 // 1) Purpose:
 // - Produire la liste des étoiles de fond (positions et paramètres d’animation CSS).
-// 2) Key variables: `count` = nombre de nœuds (ex. 110).
+// 2) Key variables: `count` = nombre de nœuds (ex. 110) ; `size` / `opacity` relevés pour écrans auto (contraste).
 // 3) Logic flow: une passe `Array.from` + tirages aléatoires indépendants par étoile.
 export function buildStarFieldNodes(count: number): StarFieldNode[] {
   return Array.from({ length: count }, (_, index) => ({
     id: `star-${index}`,
     left: Math.random() * 100,
     top: Math.random() * 100,
-    size: 0.8 + Math.random() * 2.4,
-    opacity: 0.2 + Math.random() * 0.6,
+    size: 1 + Math.random() * 2.85,
+    opacity: 0.52 + Math.random() * 0.48,
     duration: 2.4 + Math.random() * 5.2,
     delay: Math.random() * 6,
   }));
@@ -42,7 +42,7 @@ export type WarpParticleConfig = {
 
 // 1) Purpose:
 // - Générer les particules « warp » (trajectoires radiales depuis le centre).
-// 2) Key variables: `count` = nombre de trajectoires (ex. 12).
+// 2) Key variables: `count` = nombre de trajectoires (ex. 12) ; `size` un peu plus grand pour mieux les distinguer.
 // 3) Logic flow: même principe que les étoiles, avec plages adaptées au mouvement de fuite.
 export function buildWarpParticles(count: number): WarpParticleConfig[] {
   return Array.from({ length: count }, (_, index) => ({
@@ -53,6 +53,6 @@ export function buildWarpParticles(count: number): WarpParticleConfig[] {
     distance: 1040 + Math.random() * 840,
     duration: 2.6 + Math.random() * 2.4,
     delay: Math.random() * 4.5,
-    size: 1 + Math.random() * 1.2,
+    size: 1.25 + Math.random() * 1.55,
   }));
 }

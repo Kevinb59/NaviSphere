@@ -1122,10 +1122,10 @@ export default function TeslaFuturisticPortalConcept() {
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute inset-0 bg-[linear-gradient(180deg,#181d24_0%,#12171d_48%,#10151b_100%)]" />
             {/* 1) Purpose:
-                - Champ étoiles / nébuleuses / planètes assourdi (80 %) sans le vaisseau pour éviter qu’une planète se lise à travers le PNG.
+                - Champ étoiles / nébuleuses / planètes légèrement assourdi (~88 %) pour lisibilité Tesla tout en gardant le vaisseau au-dessus net.
                 2) Key variables: `z-[5]` sous le starship (`z-[15]`) et sous halo (`z-[25]`).
                 3) Logic flow: le vaisseau et le halo sont des frères séparés pour opacités indépendantes. */}
-            <div className="pointer-events-none absolute inset-0 z-[5] opacity-80">
+            <div className="pointer-events-none absolute inset-0 z-[5] opacity-[0.88]">
               {/* Etoiles scintillantes */}
               <div className="lightspeed-starfield z-[5]">
                 {starNodes.map((star) => (
