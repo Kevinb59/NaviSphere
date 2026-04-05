@@ -1359,6 +1359,13 @@ export default function TeslaFuturisticPortalConcept() {
                   Rechercher
                 </button>
               </div>
+              {/* 1) Purpose:
+                  - Mention légale discrète sous l’encart Google (colonne gauche).
+                  2) Key variables: année courante via `Date` pour éviter une date figée.
+                  3) Logic flow: texte statique + année, style secondaire pour ne pas concurrencer les actions. */}
+              <p className="mt-4 text-center text-[10px] leading-relaxed tracking-wide text-white/40">
+                © {new Date().getFullYear()} NaviSphere
+              </p>
             </div>
           </motion.div>
 
