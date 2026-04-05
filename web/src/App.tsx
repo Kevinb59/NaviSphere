@@ -27,16 +27,11 @@ import { SpaceXUpcomingLaunch } from './components/SpaceXUpcomingLaunch';
 import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
 // 1) Purpose:
-// - Liens `youtube.com/redirect?q=…` pour tests Tesla Theater (comparer s3xytheater vs NaviSphere).
-// 2) Key variables:
-// - `THEATER_ENTRY_URL` : déploiement NaviSphere ; `S3XYTHEATER_TARGET_URL` : domaine de référence pour le test A/B.
-// - `YOUTUBE_REDIRECT_*` : URL complètes avec `encodeURIComponent` sur la cible dans `q=`.
-// 3) Logic flow:
-// - Le bouton « Plein écran » ouvre un modal : chaque bouton assigne `location.href` à l’une de ces URLs.
+// - Lien Tesla Theater : page YouTube intermédiaire puis ouverture de NaviSphere (`q=` encodé).
+// 2) Key variables: `THEATER_ENTRY_URL` (cible finale) ; `FULLSCREEN_REDIRECT_URL` (youtube.com/redirect).
+// 3) Logic flow: bouton « Plein écran » et tuile dock Fullscreen → `location.href` sur `FULLSCREEN_REDIRECT_URL`.
 const THEATER_ENTRY_URL = 'https://navi-sphere.vercel.app/';
-const S3XYTHEATER_TARGET_URL = 'https://s3xytheater.fr/';
-const YOUTUBE_REDIRECT_S3XYTHEATER = `https://www.youtube.com/redirect?q=${encodeURIComponent(S3XYTHEATER_TARGET_URL)}`;
-const YOUTUBE_REDIRECT_NAVISPHERE = `https://www.youtube.com/redirect?q=${encodeURIComponent(THEATER_ENTRY_URL)}`;
+const FULLSCREEN_REDIRECT_URL = `https://www.youtube.com/redirect?q=${encodeURIComponent(THEATER_ENTRY_URL)}`;
 
 // 1) Purpose:
 // - Centraliser les services du dock (streaming, musique, etc.) pour filtres et favoris.
@@ -109,7 +104,7 @@ const dockAppsRaw = [
   { name: 'Spotify', domain: 'spotify.com', href: 'https://open.spotify.com/', icon: Music2 },
   { name: 'TuneIn', domain: 'tunein.com', href: 'https://tunein.com/', icon: Radio },
   { name: 'Cloud Gaming', domain: 'xbox.com', href: 'https://www.xbox.com/play', icon: Gamepad2 },
-  { name: 'Fullscreen', domain: 'youtube.com', href: YOUTUBE_REDIRECT_NAVISPHERE, icon: ScreenShare },
+  { name: 'Fullscreen', domain: 'youtube.com', href: FULLSCREEN_REDIRECT_URL, icon: ScreenShare },
 ];
 
 const quickMenuItems = [
@@ -364,7 +359,6 @@ export default function TeslaFuturisticPortalConcept() {
   const [dockEditMode, setDockEditMode] = useState(false);
   const [favoritePendingServiceId, setFavoritePendingServiceId] = useState<string | null>(null);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
-  const [theaterRedirectModalOpen, setTheaterRedirectModalOpen] = useState(false);
   const [dockBannerMessage, setDockBannerMessage] = useState('');
 
   const isLoggedIn = sessionCredentials !== null;
@@ -736,13 +730,11 @@ export default function TeslaFuturisticPortalConcept() {
   const [warpParticles] = useState(() => buildWarpParticles(12));
 
   // 1) Purpose:
-  // - Ouvrir le choix de lien YouTube redirect (tests Theater) ou naviguer après choix dans le modal.
-  // 2) Key variables: `YOUTUBE_REDIRECT_S3XYTHEATER`, `YOUTUBE_REDIRECT_NAVISPHERE`.
-  // 3) Logic flow: clic « Plein écran » → modal ; bouton → fermeture + `location.href`.
-  const openTheaterRedirectModal = () => setTheaterRedirectModalOpen(true);
-  const navigateTheaterYoutubeRedirect = (url: string) => {
-    setTheaterRedirectModalOpen(false);
-    window.location.href = url;
+  // - Rediriger vers `youtube.com/redirect` pour le flux plein écran Tesla Theater.
+  // 2) Key variables: `FULLSCREEN_REDIRECT_URL`.
+  // 3) Logic flow: assignation `window.location.href` au clic sur « Plein écran ».
+  const openTeslaFullscreen = () => {
+    window.location.href = FULLSCREEN_REDIRECT_URL;
   };
 
   // 1) Purpose:
@@ -1114,7 +1106,7 @@ export default function TeslaFuturisticPortalConcept() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={openTheaterRedirectModal}
+                onClick={openTeslaFullscreen}
                 className="hidden items-center gap-2 rounded-full bg-black/25 px-3 py-2 text-sm text-white/70 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12] md:flex"
               >
                 <ScreenShare className="h-4 w-4" />
@@ -1305,36 +1297,6 @@ export default function TeslaFuturisticPortalConcept() {
             </div>
 
             <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Recherche web</p>
-              {/* 1) Purpose:
-                  - Même encart qu’à droite avant refonte : Google depuis la colonne gauche.
-                  2) Key variables: `googleSearchQuery`, `openGoogleSearch`.
-                  3) Logic flow: saisie + bouton ou Entrée → redirection Google. */}
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center gap-2 rounded-[12px] bg-black/30 px-3 py-3 ring-1 ring-white/10">
-                  <Search className="h-4 w-4 text-white/60" />
-                  <input
-                    type="text"
-                    value={googleSearchQuery}
-                    onChange={(event) => setGoogleSearchQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') openGoogleSearch();
-                    }}
-                    placeholder="Rechercher sur Google..."
-                    className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={openGoogleSearch}
-                  className="w-full rounded-[12px] bg-white/[0.09] px-3 py-2 text-sm font-medium text-white ring-1 ring-white/10 transition hover:bg-white/[0.14]"
-                >
-                  Rechercher
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
               <div className="mb-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Accès rapides</p>
@@ -1366,6 +1328,36 @@ export default function TeslaFuturisticPortalConcept() {
                     </span>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Recherche Google</p>
+              {/* 1) Purpose:
+                  - Recherche web via Google depuis la colonne gauche, sous les accès rapides.
+                  2) Key variables: `googleSearchQuery`, `openGoogleSearch`.
+                  3) Logic flow: saisie + bouton ou Entrée → redirection Google. */}
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2 rounded-[12px] bg-black/30 px-3 py-3 ring-1 ring-white/10">
+                  <Search className="h-4 w-4 text-white/60" />
+                  <input
+                    type="text"
+                    value={googleSearchQuery}
+                    onChange={(event) => setGoogleSearchQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') openGoogleSearch();
+                    }}
+                    placeholder="Rechercher sur Google..."
+                    className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={openGoogleSearch}
+                  className="w-full rounded-[12px] bg-white/[0.09] px-3 py-2 text-sm font-medium text-white ring-1 ring-white/10 transition hover:bg-white/[0.14]"
+                >
+                  Rechercher
+                </button>
               </div>
             </div>
           </motion.div>
@@ -1890,82 +1882,6 @@ export default function TeslaFuturisticPortalConcept() {
               >
                 Fermer
               </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 1) Purpose:
-          - Choisir quelle URL mettre dans `q=` du redirect YouTube (comparaison Tesla Theater).
-          2) Key variables: `theaterRedirectModalOpen`, `YOUTUBE_REDIRECT_S3XYTHEATER`, `YOUTUBE_REDIRECT_NAVISPHERE`.
-          3) Logic flow: overlay ferme le modal ; deux boutons appellent `navigateTheaterYoutubeRedirect`. */}
-      <AnimatePresence>
-        {theaterRedirectModalOpen && (
-          <motion.div
-            key="theater-redirect-modal"
-            className="fixed inset-0 z-[106] flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-          >
-            <motion.div
-              role="presentation"
-              className="absolute inset-0 bg-black/15 backdrop-blur-[4px]"
-              onClick={() => setTheaterRedirectModalOpen(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
-            <motion.div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="theater-redirect-title"
-              initial={{ opacity: 0, y: 10, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.99 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative z-[1] w-full max-w-sm rounded-[18px] bg-[#11151b]/95 p-5 shadow-[0_32px_100px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={() => setTheaterRedirectModalOpen(false)}
-                className="absolute right-3 top-3 rounded-full bg-white/8 p-2 text-white/75 ring-1 ring-white/10 transition hover:bg-white/[0.14]"
-                aria-label="Fermer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Tesla Theater</p>
-              <h3 id="theater-redirect-title" className="mt-1 pr-8 text-lg font-medium text-white">
-                Plein écran
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-white/65">
-                Choisis le lien <span className="text-white/85">youtube.com/redirect</span> à ouvrir pour tester dans
-                la voiture (app YouTube vs navigateur).
-              </p>
-              <div className="mt-5 flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => navigateTheaterYoutubeRedirect(YOUTUBE_REDIRECT_S3XYTHEATER)}
-                  className="w-full rounded-[12px] bg-white/[0.1] px-3 py-2.5 text-left text-sm font-medium text-white ring-1 ring-white/12 transition hover:bg-white/[0.16]"
-                >
-                  s3xytheater.fr
-                  <span className="mt-0.5 block font-mono text-[11px] font-normal text-white/45">
-                    q={S3XYTHEATER_TARGET_URL}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigateTheaterYoutubeRedirect(YOUTUBE_REDIRECT_NAVISPHERE)}
-                  className="w-full rounded-[12px] bg-white/[0.1] px-3 py-2.5 text-left text-sm font-medium text-white ring-1 ring-white/12 transition hover:bg-white/[0.16]"
-                >
-                  NaviSphere (Vercel)
-                  <span className="mt-0.5 block font-mono text-[11px] font-normal text-white/45">
-                    q={THEATER_ENTRY_URL}
-                  </span>
-                </button>
-              </div>
             </motion.div>
           </motion.div>
         )}
