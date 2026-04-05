@@ -20,21 +20,13 @@ type LL2Launch = {
   rocket?: { configuration?: { full_name?: string; name?: string } };
   pad?: { name?: string; location?: { name?: string } };
   launch_service_provider?: { name?: string };
-  vid_urls?: { url?: string }[];
 };
 
 // 1) Purpose:
-// - URL pour le bouton WATCH : premier lien vidéo LL2 si présent, sinon chaîne SpaceX (live / replays).
-// 2) Key variables: `launch.vid_urls` (snake_case JSON API).
-// 3) Logic flow: parcours du tableau → première `url` non vide → fallback constant.
-const SPACEX_WATCH_FALLBACK_URL = 'https://www.youtube.com/c/SpaceX/live';
-
-function pickWatchUrl(launch: LL2Launch): string {
-  const list = launch.vid_urls;
-  if (!Array.isArray(list)) return SPACEX_WATCH_FALLBACK_URL;
-  const found = list.find((v) => v.url && v.url.trim().length > 0);
-  return found?.url?.trim() || SPACEX_WATCH_FALLBACK_URL;
-}
+// - Cible fixe du bouton WATCH : page officielle des lancements SpaceX.
+// 2) Key variables: `SPACEX_LAUNCHES_PAGE_URL` (https://www.spacex.com/launches).
+// 3) Logic flow: lien constant, pas de dépendance aux `vid_urls` Launch Library.
+const SPACEX_LAUNCHES_PAGE_URL = 'https://www.spacex.com/launches';
 
 // 1) Purpose:
 // - Choisir le **prochain** lancement SpaceX dont `net` est encore dans le futur (évite d’afficher celui d’il y a quelques heures).
@@ -136,7 +128,6 @@ export function SpaceXUpcomingLaunch() {
   const [padName, setPadName] = useState('');
   const [locationName, setLocationName] = useState('');
   const [targetMs, setTargetMs] = useState<number | null>(null);
-  const [watchUrl, setWatchUrl] = useState(SPACEX_WATCH_FALLBACK_URL);
   const [nowTick, setNowTick] = useState(() => Date.now());
 
   const tick = useCallback(() => setNowTick(Date.now()), []);
@@ -160,7 +151,6 @@ export function SpaceXUpcomingLaunch() {
           setPadName('');
           setLocationName('');
           setTargetMs(null);
-          setWatchUrl(SPACEX_WATCH_FALLBACK_URL);
           return;
         }
         const missionLabel = launch.mission?.name || launch.name || '';
@@ -172,7 +162,6 @@ export function SpaceXUpcomingLaunch() {
         setLocationName(launch.pad?.location?.name?.trim() || '');
         const net = launch.net ? new Date(launch.net).getTime() : NaN;
         setTargetMs(Number.isFinite(net) ? net : null);
-        setWatchUrl(pickWatchUrl(launch));
       } catch {
         if (!cancelled) setError('Données indisponibles.');
       } finally {
@@ -232,11 +221,11 @@ export function SpaceXUpcomingLaunch() {
             <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
               {/* 1) Purpose:
                   - Compte à rebours + lien WATCH alignés en hauteur (police WATCH légèrement plus petite).
-                  2) Key variables: `countdownText`, `watchUrl` (vidéo mission ou fallback YouTube SpaceX).
+                  2) Key variables: `countdownText`, `SPACEX_LAUNCHES_PAGE_URL`.
                   3) Logic flow: `items-center` + `leading-none` sur le lien pour caler la bordure sur la ligne du timer. */}
               <CountdownRolling text={countdownText} className="min-w-0" />
               <a
-                href={watchUrl}
+                href={SPACEX_LAUNCHES_PAGE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="shrink-0 rounded-md border border-white bg-transparent px-2.5 py-[0.28em] font-['Unica_One',sans-serif] text-[clamp(13px,2.85vw,16px)] uppercase leading-none tracking-[0.12em] text-white transition hover:bg-white/10"
