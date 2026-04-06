@@ -29,7 +29,7 @@ function tileClassName(v: number): string {
 type MoveDir = 'up' | 'down' | 'left' | 'right';
 
 // 1) Purpose:
-// - Modal plein écran pour le 2048 (flèches clavier + swipe tactile).
+// - Panneau 2048 centré sans voile sur le fond NaviSphere (calque transparent pour fermer au clic).
 // 2) Key variables: `grid`, `score`, `best` (localStorage), `gameOver`, `wonBanner`, refs pour éviter fermetures obsolètes.
 // 3) Logic flow: entrée → `applyMove` → mise à jour grille + score → tuile aléatoire → contrôle fin de partie / victoire.
 export function Game2048({ onClose }: { onClose: () => void }) {
@@ -153,11 +153,8 @@ export function Game2048({ onClose }: { onClose: () => void }) {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <div
-        className="absolute inset-0 bg-black/35 backdrop-blur-[6px]"
-        onClick={onClose}
-        aria-hidden
-      />
+      {/* 4) Calque invisible plein écran : ferme le jeu au clic sans assombrir ni flouter le fond. */}
+      <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <motion.div
         role="dialog"
         aria-modal="true"
@@ -166,7 +163,7 @@ export function Game2048({ onClose }: { onClose: () => void }) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.22, ease: 'easeOut' }}
-        className="relative z-[1] w-full max-w-[min(100%,380px)] rounded-[20px] bg-[#11151b]/95 p-4 shadow-[0_40px_120px_rgba(0,0,0,0.55)] ring-1 ring-white/10 backdrop-blur-2xl"
+        className="relative z-[1] w-full max-w-[min(100%,380px)] rounded-[20px] bg-black/30 p-4 shadow-[0_12px_48px_rgba(0,0,0,0.35)] ring-1 ring-white/15"
         onClick={(ev) => ev.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-2">
@@ -239,7 +236,7 @@ export function Game2048({ onClose }: { onClose: () => void }) {
           </div>
 
           {wonBanner && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-[14px] bg-black/55 p-4 text-center backdrop-blur-[2px]">
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-[14px] bg-black/55 p-4 text-center">
               <p className="text-lg font-semibold text-white">Bravo — 2048 !</p>
               <button
                 type="button"
@@ -252,7 +249,7 @@ export function Game2048({ onClose }: { onClose: () => void }) {
           )}
 
           {gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-[14px] bg-black/60 p-4 text-center backdrop-blur-[2px]">
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-[14px] bg-black/60 p-4 text-center">
               <p className="text-lg font-semibold text-white">Partie terminée</p>
               <button
                 type="button"
@@ -274,18 +271,6 @@ export function Game2048({ onClose }: { onClose: () => void }) {
             Nouvelle partie
           </button>
         </div>
-
-        <p className="mt-3 text-center text-[10px] leading-snug text-white/35">
-          Inspiré du jeu 2048 (MIT) —{' '}
-          <a
-            href="https://github.com/gabrielecirulli/2048"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-white/50 underline underline-offset-2 hover:text-white/70"
-          >
-            gabrielecirulli/2048
-          </a>
-        </p>
       </motion.div>
     </motion.div>
   );

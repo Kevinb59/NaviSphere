@@ -1873,9 +1873,9 @@ export default function TeslaFuturisticPortalConcept() {
       </AnimatePresence>
 
       {/* 1) Purpose:
-          - Catalogue des mini-jeux NaviSphere avant lancement (même style de modale que l’aide).
-          2) Key variables: `navisphereGames` ; z-index sous le jeu plein écran.
-          3) Logic flow: fermeture overlay / X ; « Jouer » ferme ce panneau et définit `openGameId`. */}
+          - Catalogue des mini-jeux NaviSphere ; fond de scène visible (pas de voile assombrissant).
+          2) Key variables: `navisphereGames` ; z-index sous le panneau de jeu.
+          3) Logic flow: fermeture clic hors carte / X ; « Jouer » ferme ce panneau et définit `openGameId`. */}
       <AnimatePresence>
         {navisphereGamesModalOpen && (
           <motion.div
@@ -1886,13 +1886,11 @@ export default function TeslaFuturisticPortalConcept() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
           >
-            <motion.div
+            <div
               role="presentation"
-              className="absolute inset-0 bg-black/35 backdrop-blur-[6px]"
+              className="absolute inset-0"
               onClick={() => setNavisphereGamesModalOpen(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              aria-hidden
             />
             <motion.div
               role="dialog"
@@ -1902,7 +1900,7 @@ export default function TeslaFuturisticPortalConcept() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.99 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative z-[1] w-full max-w-md rounded-[18px] bg-[#11151b]/95 p-5 shadow-[0_32px_100px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-2xl"
+              className="relative z-[1] w-full max-w-md rounded-[18px] bg-black/30 p-5 shadow-[0_12px_48px_rgba(0,0,0,0.35)] ring-1 ring-white/15"
               onClick={(event) => event.stopPropagation()}
             >
               <button
@@ -1918,7 +1916,7 @@ export default function TeslaFuturisticPortalConcept() {
                 Jeux intégrés
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-white/55">
-                Choisissez un jeu à lancer. Les parties s’ouvrent en plein écran.
+                Choisissez un jeu à lancer. Le fond NaviSphere reste visible pendant la partie.
               </p>
               {navisphereGames.length > 0 ? (
                 <ul className="mt-5 space-y-3">
@@ -1957,7 +1955,7 @@ export default function TeslaFuturisticPortalConcept() {
       </AnimatePresence>
 
       {/* 1) Purpose:
-          - Mini-jeux plein écran (2048, etc.) au-dessus de l’UI ; fermeture overlay ou bouton.
+          - Mini-jeux en panneau centré (2048, etc.) sans assombrir le fond ; fermeture clic extérieur ou bouton.
           2) Key variables: `openGameId` synchronisé avec `navisphereGames`.
           3) Logic flow: `AnimatePresence` pour la sortie animée du composant jeu. */}
       <AnimatePresence>
