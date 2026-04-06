@@ -281,11 +281,10 @@ a {
 /* 1) Purpose:
    - Simuler des étoiles filantes visibles seulement à certains instants.
    2) Key variables:
-   - `.lightspeed-meteor`: segment lumineux incliné avec dégradé de traînée.
-   - `animationDuration/Delay`: pilotées depuis React pour désynchroniser les occurrences.
+   - `.lightspeed-meteor`: segment lumineux ; `--meteor-travel` définit la longueur de course (px).
+   - `animationDuration`: pilotée depuis React pour désynchroniser les occurrences.
    3) Logic flow:
-   - La timeline reste majoritairement invisible, puis déclenche brièvement une traversée
-     rapide afin de donner un effet naturel "de temps en temps". */
+   - Trajectoire jusqu’à `--meteor-travel` pour que la tête quitte l’écran avant la disparition. */
 .lightspeed-meteor {
   position: absolute;
   left: 0;
@@ -473,9 +472,9 @@ a {
 }
 
 /* 1) Purpose:
-   - Faire grossir la filante (traînée + tête) en même temps qu’elle s’éloigne sur le track.
-   2) Key variables: course max ~420px (axe local du track) ; paliers 30 % / 58 % / 85 % / 100 %.
-   3) Logic flow: `linear` conserve la cohérence distance ↔ échelle entre les keyframes. */
+   - Trajectoire filante sur toute la distance `--meteor-travel` (px) pour sortir du viewport comme les planètes.
+   2) Key variables: `--meteor-travel` injecté depuis React (hypoténuse écran × marge) ; fallback 1600px.
+   3) Logic flow: paliers proportionnels `calc(fraction * var(--meteor-travel))` puis disparition en fin de course. */
 @keyframes navisphere-meteor-run {
   0% {
     opacity: 0;
@@ -485,19 +484,19 @@ a {
     opacity: 0.95;
   }
   30% {
-    transform: translate3d(126px, 0, 0) scale(1.05);
+    transform: translate3d(calc(0.3 * var(--meteor-travel, 1600px)), 0, 0) scale(1.05);
   }
   58% {
     opacity: 0.84;
-    transform: translate3d(244px, 0, 0) scale(1.52);
+    transform: translate3d(calc(0.58 * var(--meteor-travel, 1600px)), 0, 0) scale(1.52);
   }
   85% {
     opacity: 0.58;
-    transform: translate3d(357px, 0, 0) scale(2);
+    transform: translate3d(calc(0.85 * var(--meteor-travel, 1600px)), 0, 0) scale(2);
   }
   100% {
     opacity: 0;
-    transform: translate3d(420px, 0, 0) scale(2.4);
+    transform: translate3d(var(--meteor-travel, 1600px), 0, 0) scale(2.4);
   }
 }
 

@@ -310,6 +310,7 @@ export default function TeslaFuturisticPortalConcept() {
     angle: number;
     length: number;
     durationMs: number;
+    travelPx: number;
   } | null>(null);
   const [activePlanet, setActivePlanet] = useState<{
     id: string;
@@ -641,10 +642,10 @@ export default function TeslaFuturisticPortalConcept() {
   // 1) Purpose:
   // - Déclencher des étoiles filantes rares, aléatoires, avec un intervalle minimum garanti.
   // 2) Key variables:
-  // - `activeMeteor`: filante courante (ou `null` si aucune).
+  // - `activeMeteor`: filante courante (ou `null` si aucune) ; `travelPx` = distance CSS `--meteor-travel`.
   // - `nextMeteorDelayMs`: délai jusqu'au prochain déclenchement (>= 45s).
   // 3) Logic flow:
-  // - Une boucle de scheduling lance une filante, l'arrête après son animation,
+  // - Une boucle de scheduling lance une filante, l'arrête après son animation (durée + marge),
   //   puis attend au moins 45s (plus un jitter aléatoire) avant la suivante.
   useEffect(() => {
     let nextMeteorTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -654,6 +655,12 @@ export default function TeslaFuturisticPortalConcept() {
       const nextMeteorDelayMs = 45000 + Math.random() * 25000;
       nextMeteorTimerId = window.setTimeout(() => {
         const durationMs = 2200 + Math.random() * 1300;
+        // 1) Purpose: distance de translation sur le track (axe local) pour que la filante sorte du viewport.
+        // 2) Key variables: hypoténuse fenêtre × marge, plage ~1400–2800 px (comme l’ordre des planètes).
+        // 3) Logic flow: même idée que `travel` planète — évite la disparition avant le bord visible.
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const travelPx = Math.min(2800, Math.max(1400, Math.ceil(Math.hypot(w, h) * 1.38)));
         setActiveMeteor({
           id: `meteor-${Date.now()}`,
           left: 48 + (Math.random() * 8 - 4),
@@ -661,12 +668,13 @@ export default function TeslaFuturisticPortalConcept() {
           angle: Math.random() * 360,
           length: 120 + Math.random() * 140,
           durationMs,
+          travelPx,
         });
 
         clearMeteorTimerId = window.setTimeout(() => {
           setActiveMeteor(null);
           scheduleNextMeteor();
-        }, durationMs + 140);
+        }, durationMs + 320);
       }, nextMeteorDelayMs);
     };
 
@@ -1195,6 +1203,7 @@ export default function TeslaFuturisticPortalConcept() {
                         width: `${activeMeteor.length}px`,
                         animationDuration: `${activeMeteor.durationMs}ms`,
                         animationDelay: '0ms',
+                        ['--meteor-travel' as string]: `${activeMeteor.travelPx}px`,
                       }}
                     />
                   </span>
@@ -1359,13 +1368,6 @@ export default function TeslaFuturisticPortalConcept() {
                   Rechercher
                 </button>
               </div>
-              {/* 1) Purpose:
-                  - Mention légale discrète sous l’encart Google (colonne gauche).
-                  2) Key variables: année courante via `Date` pour éviter une date figée.
-                  3) Logic flow: texte statique + année, style secondaire pour ne pas concurrencer les actions. */}
-              <p className="mt-4 text-center text-[10px] leading-relaxed tracking-wide text-white/40">
-                © {new Date().getFullYear()} NaviSphere
-              </p>
             </div>
           </motion.div>
 
@@ -1506,12 +1508,12 @@ export default function TeslaFuturisticPortalConcept() {
             )}
           </AnimatePresence>
 
-          <div className="absolute inset-x-0 bottom-0 z-50 p-4 md:p-5">
+          <div className="absolute inset-x-0 bottom-0 z-50 flex flex-col items-center p-4 pt-2 md:p-5 md:pt-3">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.14 }}
-              className={`rounded-[20px] bg-black/34 ring-1 ring-white/10 backdrop-blur-2xl ${
+              className={`w-full rounded-[20px] bg-black/34 ring-1 ring-white/10 backdrop-blur-2xl ${
                 isDockCollapsed ? 'px-4 py-3 md:px-5 md:py-3' : 'p-4 md:p-5'
               }`}
             >
@@ -1594,6 +1596,13 @@ export default function TeslaFuturisticPortalConcept() {
                 </div>
                 </div>
             </motion.div>
+            {/* 1) Purpose:
+                - Copyright centré sous la carte dock (bas de l’écran), hors du bloc Google.
+                2) Key variables: année courante via `Date`.
+                3) Logic flow: texte discret, ne rétrécit pas la zone du dock. */}
+            <p className="mt-2 max-w-full text-center text-[10px] leading-relaxed tracking-wide text-white/40 md:mt-2.5">
+              © {new Date().getFullYear()} NaviSphere
+            </p>
           </div>
         </div>
       </main>
