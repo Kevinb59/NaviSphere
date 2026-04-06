@@ -1968,7 +1968,7 @@ export default function TeslaFuturisticPortalConcept() {
                         )}
                         {game.id === 'snake' && (
                           <p className="mt-0.5 text-xs text-white/45">
-                            Serpent sur grille — swipe sur l’aire de jeu pour tourner.
+                            Tesla vue du dessus, traînée arc-en-ciel, éclairs à collecter — swipe ou flèches.
                           </p>
                         )}
                       </div>

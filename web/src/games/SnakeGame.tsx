@@ -10,35 +10,101 @@ import {
 } from './gameSnakeLogic';
 
 const STORAGE_BEST = 'navisphere-snake-best';
+const URL_HEAD = '/assets/images/games/teslatop.png';
+const URL_FOOD = '/assets/images/games/applesnake.png';
 
-// 1) Purpose: convertir un swipe (delta x/y) en direction discrète si le geste est assez long.
-// 2) Key variables: `min` seuil en pixels pour ignorer les micro-mouvements.
-// 3) Logic flow: axe dominant |dx| vs |dy| puis signe.
-function swipeToDir(dx: number, dy: number, min: number): Dir | null {
-  if (Math.abs(dx) < min && Math.abs(dy) < min) return null;
-  if (Math.abs(dx) > Math.abs(dy)) {
-    return dx > 0 ? 'right' : 'left';
+// 1) Purpose: aligner la vue de dessus Tesla (capot à droite dans le PNG) avec la direction de déplacement.
+// 2) Key variables: angles en radians, sens horaire canvas (y vers le bas).
+// 3) Logic flow: droite = 0 ; bas = π/2 ; gauche = π ; haut = −π/2.
+function dirToAngleRad(dir: Dir): number {
+  switch (dir) {
+    case 'right':
+      return 0;
+    case 'down':
+      return Math.PI / 2;
+    case 'left':
+      return Math.PI;
+    case 'up':
+      return -Math.PI / 2;
+    default:
+      return 0;
   }
-  return dy > 0 ? 'down' : 'up';
 }
 
-// 1) Purpose: dessiner la grille, le serpent et la pomme sur le canvas (couleurs lisibles sur fond NaviSphere).
-// 2) Key variables: `cell` taille d’une case ; `state` snapshot courant.
-// 3) Logic flow: fond sombre → cases → pomme → corps puis tête plus claire.
+// 1) Purpose: tracer un rectangle arrondi (traînée arc-en-ciel) sans dépendre uniquement de roundRect récent.
+// 2) Key variables: `r` rayon borné par la moitié des côtés.
+// 3) Logic flow: arc de coin + segments droits.
+function fillRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  ctx.lineTo(x + rr, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+  ctx.lineTo(x, y + rr);
+  ctx.quadraticCurveTo(x, y, x + rr, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// 1) Purpose: dessiner image dans une case en conservant le ratio (Tesla ou éclair).
+// 2) Key variables: `maxSide` taille max dans la cellule.
+// 3) Logic flow: scale uniforme + centrage.
+function drawImageInCell(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  cx: number,
+  cy: number,
+  cell: number,
+  maxFill: number,
+  rotationRad?: number,
+) {
+  const ar = img.naturalWidth / img.naturalHeight;
+  let dw = cell * maxFill;
+  let dh = dw / ar;
+  if (dh > cell * maxFill) {
+    dh = cell * maxFill;
+    dw = dh * ar;
+  }
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (rotationRad !== undefined) ctx.rotate(rotationRad);
+  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+  ctx.restore();
+}
+
+// 1) Purpose: rendu Tesla-friendly — fond discret, grille légère, traînée arc-en-ciel, tête Tesla, collectibles éclair.
+// 2) Key variables: `state.direction` pour l’orientation du véhicule ; assets chargés ou repli couleur.
+// 3) Logic flow: fond → grille → nourriture → corps (queue → tête) → tête image par-dessus.
 function drawGame(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   state: SnakeState,
+  assets: { head: HTMLImageElement; food: HTMLImageElement } | null,
 ) {
   const cell = Math.min(width, height) / GRID_SIZE;
   const ox = (width - cell * GRID_SIZE) / 2;
   const oy = (height - cell * GRID_SIZE) / 2;
 
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  const g = ctx.createLinearGradient(0, 0, width, height);
+  g.addColorStop(0, 'rgba(12, 16, 24, 0.72)');
+  g.addColorStop(0.5, 'rgba(18, 22, 32, 0.78)');
+  g.addColorStop(1, 'rgba(10, 14, 22, 0.75)');
+  ctx.fillStyle = g;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = 1;
   for (let i = 0; i <= GRID_SIZE; i++) {
     const p = i * cell;
@@ -52,23 +118,71 @@ function drawGame(
     ctx.stroke();
   }
 
-  ctx.fillStyle = 'rgba(248, 113, 113, 0.95)';
-  ctx.fillRect(
-    ox + state.food.x * cell + 1,
-    oy + state.food.y * cell + 1,
-    cell - 2,
-    cell - 2,
-  );
+  const foodCx = ox + state.food.x * cell + cell / 2;
+  const foodCy = oy + state.food.y * cell + cell / 2;
+  if (assets?.food?.complete && assets.food.naturalWidth > 0) {
+    drawImageInCell(ctx, assets.food, foodCx, foodCy, cell, 0.82);
+  } else {
+    ctx.fillStyle = 'rgba(251, 113, 133, 0.95)';
+    const pad = cell * 0.12;
+    fillRoundRect(
+      ctx,
+      ox + state.food.x * cell + pad,
+      oy + state.food.y * cell + pad,
+      cell - 2 * pad,
+      cell - 2 * pad,
+      cell * 0.15,
+    );
+  }
 
-  state.snake.forEach((seg, i) => {
-    ctx.fillStyle = i === 0 ? 'rgba(134, 239, 172, 0.95)' : 'rgba(74, 222, 128, 0.85)';
-    ctx.fillRect(ox + seg.x * cell + 1, oy + seg.y * cell + 1, cell - 2, cell - 2);
-  });
+  const snake = state.snake;
+  const nBody = Math.max(0, snake.length - 1);
+
+  for (let i = snake.length - 1; i >= 1; i--) {
+    const seg = snake[i]!;
+    const sx = ox + seg.x * cell;
+    const sy = oy + seg.y * cell;
+    const pad = cell * 0.1;
+    const t = nBody <= 1 ? 0.45 : (i - 1) / Math.max(1, nBody - 1);
+    const hue = t * 300;
+    ctx.shadowColor = `hsla(${hue}, 100%, 52%, 0.65)`;
+    ctx.shadowBlur = cell * 0.22;
+    ctx.fillStyle = `hsla(${hue}, 92%, 58%, 0.96)`;
+    fillRoundRect(ctx, sx + pad, sy + pad, cell - 2 * pad, cell - 2 * pad, cell * 0.14);
+    ctx.shadowBlur = 0;
+  }
+
+  const head = snake[0]!;
+  const hcx = ox + head.x * cell + cell / 2;
+  const hcy = oy + head.y * cell + cell / 2;
+  const ang = dirToAngleRad(state.direction);
+  if (assets?.head?.complete && assets.head.naturalWidth > 0) {
+    drawImageInCell(ctx, assets.head, hcx, hcy, cell, 0.96, ang);
+  } else {
+    ctx.save();
+    ctx.translate(hcx, hcy);
+    ctx.rotate(ang);
+    ctx.fillStyle = 'rgba(243, 244, 246, 0.95)';
+    const s = cell * 0.85;
+    fillRoundRect(ctx, -s / 2, -s / 2, s, s, cell * 0.12);
+    ctx.restore();
+  }
 }
 
-// 1) Purpose: Snake en panneau central — boucle temps réel, swipes tactiles, flèches/WASD au clavier.
-// 2) Key variables: `state` ; `best` (localStorage) ; `touchStart` pour le swipe.
-// 3) Logic flow: timeout récurrent selon score → `stepSnake` ; swipe → `queueSnakeDirection`.
+// 1) Purpose: convertir un swipe (delta x/y) en direction discrète si le geste est assez long.
+// 2) Key variables: `min` seuil en pixels pour ignorer les micro-mouvements.
+// 3) Logic flow: axe dominant |dx| vs |dy| puis signe.
+function swipeToDir(dx: number, dy: number, min: number): Dir | null {
+  if (Math.abs(dx) < min && Math.abs(dy) < min) return null;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx > 0 ? 'right' : 'left';
+  }
+  return dy > 0 ? 'down' : 'up';
+}
+
+// 1) Purpose: Snake Tesla — canvas, swipes, clavier, assets PNG tête / énergie.
+// 2) Key variables: `state` ; `assetsRef` images chargées ; `best` localStorage.
+// 3) Logic flow: idem version précédente avec rendu graphique enrichi.
 export function SnakeGame() {
   const [state, setState] = useState<SnakeState>(() => createInitialSnakeState());
   const [best, setBest] = useState(() => {
@@ -80,22 +194,56 @@ export function SnakeGame() {
     }
   });
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [assetsReady, setAssetsReady] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const assetsRef = useRef<{ head: HTMLImageElement | null; food: HTMLImageElement | null }>({
+    head: null,
+    food: null,
+  });
   const [bounds, setBounds] = useState({ w: 320, h: 320 });
+
+  useEffect(() => {
+    const head = new Image();
+    const food = new Image();
+    head.decoding = 'async';
+    food.decoding = 'async';
+    head.src = URL_HEAD;
+    food.src = URL_FOOD;
+    let loaded = 0;
+    const onDone = () => {
+      loaded += 1;
+      if (loaded >= 2) {
+        assetsRef.current = { head, food };
+        setAssetsReady(true);
+      }
+    };
+    head.onload = onDone;
+    food.onload = onDone;
+    head.onerror = onDone;
+    food.onerror = onDone;
+    if (head.complete && food.complete) {
+      assetsRef.current = { head, food };
+      setAssetsReady(true);
+    }
+    return () => {
+      head.onload = null;
+      food.onload = null;
+    };
+  }, []);
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const ro = new ResizeObserver(() => {
       const w = el.clientWidth || 320;
-      const h = Math.min(w, 360);
+      const h = Math.min(w, 380);
       setBounds({ w, h });
     });
     ro.observe(el);
     const w = el.clientWidth || 320;
-    setBounds({ w, h: Math.min(w, 360) });
+    setBounds({ w, h: Math.min(w, 380) });
     return () => ro.disconnect();
   }, []);
 
@@ -111,8 +259,11 @@ export function SnakeGame() {
     canvas.style.width = `${w}px`;
     canvas.style.height = `${h}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawGame(ctx, w, h, state);
-  }, [state, bounds]);
+    const a = assetsRef.current;
+    const assets =
+      a.head && a.food && assetsReady ? { head: a.head, food: a.food } : null;
+    drawGame(ctx, w, h, state, assets);
+  }, [state, bounds, assetsReady]);
 
   useEffect(() => {
     if (state.gameOver || state.paused) return;
@@ -142,9 +293,6 @@ export function SnakeGame() {
   const gameOverRef = useRef(false);
   gameOverRef.current = state.gameOver;
 
-  // 1) Purpose: flèches + WASD avec écoute en phase capture pour devancer le scroll du panneau central.
-  // 2) Key variables: `e.key` et `e.code` (ArrowUp…) pour compatibilité claviers / OS.
-  // 3) Logic flow: stopPropagation + preventDefault sur les directions ; espace = pause.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (gameOverRef.current) return;
@@ -187,26 +335,24 @@ export function SnakeGame() {
 
   return (
     <div className="flex max-w-md flex-col gap-3" tabIndex={-1}>
-      {/* 4) Instructions: swipes tactiles ; flèches directionnelles + WASD (priorité sur le défilement du panneau). */}
-      <p className="text-xs text-white/45">
-        Glissez sur la zone de jeu pour diriger le serpent. Flèches directionnelles (↑↓←→) ou WASD ; espace pour
-        pause.
+      <p className="text-xs text-white/50">
+        Glissez sur la zone de jeu, ou flèches / WASD. Ramassez les éclairs d’énergie — espace pour pause.
       </p>
 
       <div className="flex gap-2">
-        <div className="flex-1 rounded-[12px] bg-black/30 px-3 py-2 text-center ring-1 ring-white/10">
-          <p className="text-[10px] uppercase tracking-wider text-white/45">Score</p>
-          <p className="text-lg font-semibold text-white">{state.score}</p>
+        <div className="flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-3 py-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">Score</p>
+          <p className="text-lg font-semibold tabular-nums text-white">{state.score}</p>
         </div>
-        <div className="flex-1 rounded-[12px] bg-black/30 px-3 py-2 text-center ring-1 ring-white/10">
-          <p className="text-[10px] uppercase tracking-wider text-white/45">Meilleur</p>
-          <p className="text-lg font-semibold text-emerald-200/90">{best}</p>
+        <div className="flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-3 py-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">Meilleur</p>
+          <p className="text-lg font-semibold tabular-nums text-sky-200/95">{best}</p>
         </div>
       </div>
 
       <div
         ref={wrapRef}
-        className="relative w-full touch-none select-none overflow-hidden rounded-[14px] ring-1 ring-white/10"
+        className="relative w-full touch-none select-none overflow-hidden rounded-2xl border border-white/15 bg-[#0a0e14]/50 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]"
         style={{ touchAction: 'none' }}
         onTouchStart={(ev) => {
           const t = ev.touches[0];
@@ -214,21 +360,27 @@ export function SnakeGame() {
         }}
         onTouchEnd={onTouchEnd}
       >
-        <canvas ref={canvasRef} className="block w-full max-h-[360px] bg-black/20" aria-label="Aire de jeu Snake" />
+        <canvas
+          ref={canvasRef}
+          className="block w-full max-h-[380px]"
+          aria-label="Aire de jeu Snake Tesla"
+        />
 
         {state.paused && !state.gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-center">
-            <p className="text-sm font-medium text-white">Pause — Espace pour reprendre</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
+            <p className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white shadow-lg">
+              Pause — Espace pour reprendre
+            </p>
           </div>
         )}
 
         {state.gameOver && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 p-4 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 p-4 text-center backdrop-blur-[3px]">
             <p className="text-lg font-semibold text-white">Partie terminée</p>
             <button
               type="button"
               onClick={reset}
-              className="mt-3 rounded-[12px] bg-white/[0.15] px-4 py-2 text-sm text-white ring-1 ring-white/20"
+              className="mt-4 rounded-[14px] border border-white/20 bg-white/[0.12] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.18]"
             >
               Rejouer
             </button>
@@ -240,14 +392,14 @@ export function SnakeGame() {
         <button
           type="button"
           onClick={() => setState((s) => ({ ...s, paused: !s.paused }))}
-          className="flex-1 rounded-[12px] bg-white/[0.09] px-3 py-2 text-sm font-medium text-white ring-1 ring-white/10 transition hover:bg-white/[0.14]"
+          className="flex-1 rounded-[14px] border border-white/12 bg-white/[0.06] px-3 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.11]"
         >
           {state.paused ? 'Reprendre' : 'Pause'}
         </button>
         <button
           type="button"
           onClick={reset}
-          className="flex-1 rounded-[12px] bg-white/[0.09] px-3 py-2 text-sm font-medium text-white ring-1 ring-white/10 transition hover:bg-white/[0.14]"
+          className="flex-1 rounded-[14px] border border-white/12 bg-white/[0.06] px-3 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.11]"
         >
           Nouvelle partie
         </button>
