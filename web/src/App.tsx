@@ -118,11 +118,11 @@ const quickMenuItems = [
 
 // 1) Purpose:
 // - Mini-jeux intégrés à NaviSphere (développés dans ce dépôt) ; liste affichée dans l’encart gauche « Jeux NaviSphere ».
-// 2) Key variables: `id` stable (clé React / routing futur) ; `title` libellé du bouton.
-// 3) Logic flow: tableau vide → message d’attente ; entrées avec `id` → `openGameId` ouvre la modale correspondante.
-const navisphereGames: { id: string; title: string }[] = [
-  { id: '2048', title: '2048' },
-  { id: 'snake', title: 'Snake' },
+// 2) Key variables: `id` stable ; `title` ; `blurb` courte phrase pour la liste modale.
+// 3) Logic flow: entrées avec `id` → `openGameId` ouvre le jeu dans le panneau central.
+const navisphereGames: { id: string; title: string; blurb: string }[] = [
+  { id: '2048', title: '2048', blurb: 'Fusionnez les tuiles jusqu’à 2048.' },
+  { id: 'snake', title: 'Snake', blurb: 'Mangez les pommes, évitez de vous croiser.' },
 ];
 
 const musicServicesRaw = [
@@ -1671,15 +1671,15 @@ export default function TeslaFuturisticPortalConcept() {
                 </div>
                 </div>
             </motion.div>
-            {/* 1) Purpose:
-                - Copyright centré sous la carte dock (bas de l’écran), hors du bloc Google.
-                2) Key variables: année courante via `Date`.
-                3) Logic flow: texte discret, ne rétrécit pas la zone du dock. */}
-            <p className="mt-2 max-w-full text-center text-[10px] leading-relaxed tracking-wide text-white/40 md:mt-2.5">
-              © {new Date().getFullYear()} NaviSphere
-            </p>
           </div>
         </div>
+
+        {/* 1) Purpose: copyright fixé au bas du viewport, hors du cadre arrondi principal.
+            2) Key variables: année courante ; z au-dessus du dock pour rester lisible.
+            3) Logic flow: `fixed` + `pointer-events-none` pour ne pas bloquer les clics. */}
+        <p className="pointer-events-none fixed bottom-2 left-0 right-0 z-[60] text-center text-[10px] leading-relaxed tracking-wide text-white/45 md:bottom-3">
+          © {new Date().getFullYear()} NaviSphere
+        </p>
       </main>
 
       {/* 1) Purpose:
@@ -1952,7 +1952,7 @@ export default function TeslaFuturisticPortalConcept() {
                 Jeux intégrés
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-white/55">
-                Choisissez un jeu à lancer. Le fond NaviSphere reste visible pendant la partie.
+                En solo ou à plusieurs, affrontez votre Tesla : venez jouer à nos classiques intégrés.
               </p>
               {navisphereGames.length > 0 ? (
                 <ul className="mt-5 space-y-3">
@@ -1963,14 +1963,7 @@ export default function TeslaFuturisticPortalConcept() {
                     >
                       <div>
                         <p className="text-sm font-medium text-white">{game.title}</p>
-                        {game.id === '2048' && (
-                          <p className="mt-0.5 text-xs text-white/45">Puzzle par fusion de tuiles — atteignez 2048.</p>
-                        )}
-                        {game.id === 'snake' && (
-                          <p className="mt-0.5 text-xs text-white/45">
-                            Tesla vue du dessus, traînée arc-en-ciel, éclairs à collecter — swipe ou flèches.
-                          </p>
-                        )}
+                        <p className="mt-0.5 text-xs text-white/45">{game.blurb}</p>
                       </div>
                       <button
                         type="button"
