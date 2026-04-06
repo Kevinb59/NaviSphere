@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   GRID_SIZE,
   type Dir,
+  type Point,
   type SnakeState,
   createInitialSnakeState,
   queueSnakeDirection,
@@ -57,9 +58,9 @@ function fillRoundRect(
   ctx.fill();
 }
 
-// 1) Purpose: dessiner image dans une case en conservant le ratio (Tesla ou éclair).
-// 2) Key variables: `maxSide` taille max dans la cellule.
-// 3) Logic flow: scale uniforme + centrage.
+// 1) Purpose: dessiner image centrée sur une case ; `maxFill` peut dépasser 1 pour déborder légèrement (Tesla plus lisible).
+// 2) Key variables: ratio naturel préservé ; boîte englobante ≤ `cell * maxFill`.
+// 3) Logic flow: scale uniforme + rotation optionnelle autour du centre.
 function drawImageInCell(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
@@ -70,10 +71,11 @@ function drawImageInCell(
   rotationRad?: number,
 ) {
   const ar = img.naturalWidth / img.naturalHeight;
-  let dw = cell * maxFill;
+  const cap = cell * maxFill;
+  let dw = cap;
   let dh = dw / ar;
-  if (dh > cell * maxFill) {
-    dh = cell * maxFill;
+  if (dh > cap) {
+    dh = cap;
     dw = dh * ar;
   }
   ctx.save();
@@ -83,9 +85,73 @@ function drawImageInCell(
   ctx.restore();
 }
 
-// 1) Purpose: rendu Tesla-friendly — fond discret, grille légère, traînée arc-en-ciel, tête Tesla, collectibles éclair.
-// 2) Key variables: `state.direction` pour l’orientation du véhicule ; assets chargés ou repli couleur.
-// 3) Logic flow: fond → grille → nourriture → corps (queue → tête) → tête image par-dessus.
+// 1) Purpose: traînée « tube de lumière » entre centres de cases — pas de remplissage carré, rendu futuriste.
+// 2) Key variables: teinte le long du corps (cyan → fuchsia) ; passes superposées (lueur + cœur brillant).
+// 3) Logic flow: pour chaque arête serpent[i]→serpent[i+1], trois traits + mode lighter sur les halos.
+function drawLightTrail(
+  ctx: CanvasRenderingContext2D,
+  snake: Point[],
+  ox: number,
+  oy: number,
+  cell: number,
+) {
+  if (snake.length < 2) return;
+
+  const cx = (p: Point) => ox + p.x * cell + cell / 2;
+  const cy = (p: Point) => oy + p.y * cell + cell / 2;
+  const maxI = Math.max(1, snake.length - 2);
+
+  const strokeSeg = (
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    hue: number,
+    useLighter: boolean,
+  ) => {
+    if (useLighter) ctx.globalCompositeOperation = 'lighter';
+    else ctx.globalCompositeOperation = 'source-over';
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.strokeStyle = `hsla(${hue}, 100%, 58%, 0.22)`;
+    ctx.lineWidth = cell * 0.58;
+    ctx.shadowBlur = cell * 0.55;
+    ctx.shadowColor = `hsla(${hue}, 100%, 55%, 0.9)`;
+    ctx.stroke();
+
+    ctx.strokeStyle = `hsla(${hue}, 98%, 68%, 0.42)`;
+    ctx.lineWidth = cell * 0.34;
+    ctx.shadowBlur = cell * 0.28;
+    ctx.shadowColor = `hsla(${hue}, 95%, 70%, 0.75)`;
+    ctx.stroke();
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = `hsla(${hue}, 40%, 96%, 0.98)`;
+    ctx.lineWidth = cell * 0.1;
+    ctx.stroke();
+  };
+
+  for (let i = 0; i < snake.length - 1; i++) {
+    const t = i / maxI;
+    const hue = 188 + t * 152;
+    const p1 = snake[i]!;
+    const p2 = snake[i + 1]!;
+    strokeSeg(cx(p1), cy(p1), cx(p2), cy(p2), hue, true);
+  }
+
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.shadowBlur = 0;
+}
+
+// 1) Purpose: rendu premium — fond nébuleux, grille quasi invisible, éclair + traînée lumineuse, Tesla agrandie au-dessus.
+// 2) Key variables: `state.direction` pour la rotation ; `maxFill` tête ~1.3, pomme ~1.12.
+// 3) Logic flow: fond → cadre léger → collectibles → traînée → tête.
 function drawGame(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -96,75 +162,84 @@ function drawGame(
   const cell = Math.min(width, height) / GRID_SIZE;
   const ox = (width - cell * GRID_SIZE) / 2;
   const oy = (height - cell * GRID_SIZE) / 2;
+  const gw = cell * GRID_SIZE;
+  const gh = cell * GRID_SIZE;
 
-  const g = ctx.createLinearGradient(0, 0, width, height);
-  g.addColorStop(0, 'rgba(12, 16, 24, 0.72)');
-  g.addColorStop(0.5, 'rgba(18, 22, 32, 0.78)');
-  g.addColorStop(1, 'rgba(10, 14, 22, 0.75)');
-  ctx.fillStyle = g;
+  const rg = ctx.createRadialGradient(
+    width * 0.5,
+    height * 0.48,
+    Math.min(width, height) * 0.08,
+    width * 0.5,
+    height * 0.5,
+    Math.max(width, height) * 0.72,
+  );
+  rg.addColorStop(0, 'rgba(28, 42, 62, 0.5)');
+  rg.addColorStop(0.45, 'rgba(12, 16, 26, 0.82)');
+  rg.addColorStop(1, 'rgba(4, 6, 12, 0.92)');
+  ctx.fillStyle = rg;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.strokeStyle = 'rgba(120, 200, 255, 0.09)';
   ctx.lineWidth = 1;
-  for (let i = 0; i <= GRID_SIZE; i++) {
+  ctx.strokeRect(ox + 0.5, oy + 0.5, gw - 1, gh - 1);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.028)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= GRID_SIZE; i += 2) {
     const p = i * cell;
     ctx.beginPath();
     ctx.moveTo(ox + p, oy);
-    ctx.lineTo(ox + p, oy + cell * GRID_SIZE);
+    ctx.lineTo(ox + p, oy + gh);
     ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(ox, oy + p);
-    ctx.lineTo(ox + cell * GRID_SIZE, oy + p);
+    ctx.lineTo(ox + gw, oy + p);
     ctx.stroke();
   }
 
   const foodCx = ox + state.food.x * cell + cell / 2;
   const foodCy = oy + state.food.y * cell + cell / 2;
   if (assets?.food?.complete && assets.food.naturalWidth > 0) {
-    drawImageInCell(ctx, assets.food, foodCx, foodCy, cell, 0.82);
+    ctx.save();
+    ctx.shadowBlur = cell * 0.35;
+    ctx.shadowColor = 'rgba(251, 191, 36, 0.55)';
+    drawImageInCell(ctx, assets.food, foodCx, foodCy, cell, 1.12);
+    ctx.restore();
   } else {
     ctx.fillStyle = 'rgba(251, 113, 133, 0.95)';
-    const pad = cell * 0.12;
+    const pad = cell * 0.08;
     fillRoundRect(
       ctx,
       ox + state.food.x * cell + pad,
       oy + state.food.y * cell + pad,
       cell - 2 * pad,
       cell - 2 * pad,
-      cell * 0.15,
+      cell * 0.2,
     );
   }
 
   const snake = state.snake;
-  const nBody = Math.max(0, snake.length - 1);
-
-  for (let i = snake.length - 1; i >= 1; i--) {
-    const seg = snake[i]!;
-    const sx = ox + seg.x * cell;
-    const sy = oy + seg.y * cell;
-    const pad = cell * 0.1;
-    const t = nBody <= 1 ? 0.45 : (i - 1) / Math.max(1, nBody - 1);
-    const hue = t * 300;
-    ctx.shadowColor = `hsla(${hue}, 100%, 52%, 0.65)`;
-    ctx.shadowBlur = cell * 0.22;
-    ctx.fillStyle = `hsla(${hue}, 92%, 58%, 0.96)`;
-    fillRoundRect(ctx, sx + pad, sy + pad, cell - 2 * pad, cell - 2 * pad, cell * 0.14);
-    ctx.shadowBlur = 0;
-  }
+  ctx.save();
+  drawLightTrail(ctx, snake, ox, oy, cell);
+  ctx.restore();
 
   const head = snake[0]!;
   const hcx = ox + head.x * cell + cell / 2;
   const hcy = oy + head.y * cell + cell / 2;
   const ang = dirToAngleRad(state.direction);
   if (assets?.head?.complete && assets.head.naturalWidth > 0) {
-    drawImageInCell(ctx, assets.head, hcx, hcy, cell, 0.96, ang);
+    ctx.save();
+    ctx.shadowBlur = cell * 0.22;
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.35)';
+    drawImageInCell(ctx, assets.head, hcx, hcy, cell, 1.3, ang);
+    ctx.restore();
   } else {
     ctx.save();
     ctx.translate(hcx, hcy);
     ctx.rotate(ang);
     ctx.fillStyle = 'rgba(243, 244, 246, 0.95)';
-    const s = cell * 0.85;
-    fillRoundRect(ctx, -s / 2, -s / 2, s, s, cell * 0.12);
+    const s = cell * 0.95;
+    fillRoundRect(ctx, -s / 2, -s / 2, s, s, cell * 0.14);
     ctx.restore();
   }
 }
@@ -336,7 +411,8 @@ export function SnakeGame() {
   return (
     <div className="flex max-w-md flex-col gap-3" tabIndex={-1}>
       <p className="text-xs text-white/50">
-        Glissez sur la zone de jeu, ou flèches / WASD. Ramassez les éclairs d’énergie — espace pour pause.
+        Glissez ou utilisez les flèches / WASD. Ramassez les éclairs — la traînée suit le serpent en lumière.
+        Espace pour pause.
       </p>
 
       <div className="flex gap-2">
@@ -352,7 +428,7 @@ export function SnakeGame() {
 
       <div
         ref={wrapRef}
-        className="relative w-full touch-none select-none overflow-hidden rounded-2xl border border-white/15 bg-[#0a0e14]/50 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]"
+        className="relative w-full touch-none select-none overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.35)]"
         style={{ touchAction: 'none' }}
         onTouchStart={(ev) => {
           const t = ev.touches[0];
