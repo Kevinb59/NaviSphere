@@ -24,6 +24,7 @@ import { DockFavoritesBar } from './components/DockFavoritesBar';
 import { FavoriteConfirmModal } from './components/FavoriteConfirmModal';
 import { ServiceCatalogTile } from './components/ServiceCatalogTile';
 import { SpaceXUpcomingLaunch } from './components/SpaceXUpcomingLaunch';
+import { Game2048 } from './games/Game2048';
 import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
 // 1) Purpose:
@@ -117,8 +118,8 @@ const quickMenuItems = [
 // 1) Purpose:
 // - Mini-jeux intégrés à NaviSphere (développés dans ce dépôt) ; liste affichée dans l’encart gauche « Jeux NaviSphere ».
 // 2) Key variables: `id` stable (clé React / routing futur) ; `title` libellé du bouton.
-// 3) Logic flow: tableau vide → message d’attente ; ajouter des entrées puis brancher ouverture (modal, route, canvas).
-const navisphereGames: { id: string; title: string }[] = [];
+// 3) Logic flow: tableau vide → message d’attente ; entrées avec `id` → `openGameId` ouvre la modale correspondante.
+const navisphereGames: { id: string; title: string }[] = [{ id: '2048', title: '2048' }];
 
 const musicServicesRaw = [
   { name: 'Apple Music', domain: 'music.apple.com', href: 'https://music.apple.com/fr/', icon: Music2 },
@@ -366,6 +367,10 @@ export default function TeslaFuturisticPortalConcept() {
   const [dockEditMode, setDockEditMode] = useState(false);
   const [favoritePendingServiceId, setFavoritePendingServiceId] = useState<string | null>(null);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  // 1) Purpose: ouvrir un mini-jeu NaviSphere (ex. 2048) en modale plein écran.
+  // 2) Key variables: `id` aligné sur `navisphereGames`.
+  // 3) Logic flow: clic sur un bouton jeu → id ; fermeture → null.
+  const [openGameId, setOpenGameId] = useState<string | null>(null);
   const [dockBannerMessage, setDockBannerMessage] = useState('');
 
   const isLoggedIn = sessionCredentials !== null;
@@ -1395,6 +1400,7 @@ export default function TeslaFuturisticPortalConcept() {
                     <button
                       key={game.id}
                       type="button"
+                      onClick={() => setOpenGameId(game.id)}
                       className="w-full rounded-[12px] bg-white/[0.055] px-3 py-2.5 text-left text-sm font-medium text-white ring-1 ring-white/10 transition hover:bg-white/[0.1]"
                     >
                       {game.title}
@@ -1864,6 +1870,16 @@ export default function TeslaFuturisticPortalConcept() {
             onConfirm={() => void confirmFavoriteAdd()}
             onCancel={() => setFavoritePendingServiceId(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* 1) Purpose:
+          - Mini-jeux plein écran (2048, etc.) au-dessus de l’UI ; fermeture overlay ou bouton.
+          2) Key variables: `openGameId` synchronisé avec `navisphereGames`.
+          3) Logic flow: `AnimatePresence` pour la sortie animée du composant jeu. */}
+      <AnimatePresence>
+        {openGameId === '2048' && (
+          <Game2048 key="game-2048-modal" onClose={() => setOpenGameId(null)} />
         )}
       </AnimatePresence>
 
