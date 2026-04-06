@@ -84,9 +84,19 @@ function headOffset(head: Point, dir: Dir): Point {
   }
 }
 
-// 1) Purpose: un tick de jeu — déplace la tête, allonge si pomme, sinon retire la queue.
+// 1) Purpose: topologie « tore » — sortir d’un bord réapparaît sur le bord opposé (même ligne / colonne).
+// 2) Key variables: coordonnées potentiellement hors grille avant modulo.
+// 3) Logic flow: modulo positif pour gérer les négatifs (ex. x = -1 → GRID_WIDTH - 1).
+function wrapPoint(p: Point): Point {
+  return {
+    x: ((p.x % GRID_WIDTH) + GRID_WIDTH) % GRID_WIDTH,
+    y: ((p.y % GRID_HEIGHT) + GRID_HEIGHT) % GRID_HEIGHT,
+  };
+}
+
+// 1) Purpose: un tick de jeu — déplace la tête (wrap aux bords), allonge si pomme, sinon retire la queue.
 // 2) Key variables: `effectiveDir` = `pendingDirection ?? direction` (après filtre demi-tour).
-// 3) Logic flow: murs → collision avec le corps (queue exclue si pas de croissance) → nouvelle pomme si mangé.
+// 3) Logic flow: pas de game over aux murs ; seule collision avec soi-même (ou grille pleine) termine la partie.
 export function stepSnake(state: SnakeState): SnakeState {
   if (state.gameOver || state.paused) return state;
 
@@ -96,11 +106,7 @@ export function stepSnake(state: SnakeState): SnakeState {
   }
 
   const head = state.snake[0]!;
-  const next = headOffset(head, dir);
-
-  if (next.x < 0 || next.x >= GRID_WIDTH || next.y < 0 || next.y >= GRID_HEIGHT) {
-    return { ...state, gameOver: true, pendingDirection: null };
-  }
+  const next = wrapPoint(headOffset(head, dir));
 
   const ateFood = next.x === state.food.x && next.y === state.food.y;
 

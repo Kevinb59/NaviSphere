@@ -320,10 +320,15 @@ export function SnakeGame() {
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    // 4) Taille canvas = grille 40×25 exacte : largeur du conteneur, hauteur dérivée (pas de bandes vides).
+    // 4) Taille canvas : cellule = min(largeur/hauteur disponibles) pour tenir dans la boîte sans scroll vertical.
+    //    Key: `cell` borne la grille ; `w`/`h` = dimensions exactes du dessin (drawGame centre si besoin).
+    // 3) Logic flow: ResizeObserver sur le conteneur à hauteur max fixée → pas de débordement.
     const fit = () => {
-      const w = el.clientWidth || 320;
-      const h = (w * GRID_HEIGHT) / GRID_WIDTH;
+      const availW = el.clientWidth || 320;
+      const availH = el.clientHeight || 200;
+      const cell = Math.min(availW / GRID_WIDTH, availH / GRID_HEIGHT);
+      const w = cell * GRID_WIDTH;
+      const h = cell * GRID_HEIGHT;
       setBounds({ w, h });
     };
     const ro = new ResizeObserver(fit);
@@ -448,7 +453,7 @@ export function SnakeGame() {
 
       <div
         ref={wrapRef}
-        className="relative aspect-[40/25] w-full min-w-0 touch-none select-none overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.35)]"
+        className="relative flex h-[min(48vh,400px)] min-h-[140px] w-full min-w-0 shrink-0 touch-none select-none items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.35)]"
         style={{ touchAction: 'none' }}
         onTouchStart={(ev) => {
           const t = ev.touches[0];
@@ -456,32 +461,35 @@ export function SnakeGame() {
         }}
         onTouchEnd={onTouchEnd}
       >
-        <canvas
-          ref={canvasRef}
-          className="block h-full w-full"
-          aria-label="Aire de jeu Snake Tesla"
-        />
+        {/* 4) Boîte alignée sur le canvas pour overlays pause / game over. */}
+        <div className="relative" style={{ width: bounds.w, height: bounds.h }}>
+          <canvas
+            ref={canvasRef}
+            className="block h-full w-full"
+            aria-label="Aire de jeu Snake Tesla"
+          />
 
-        {state.paused && !state.gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
-            <p className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white shadow-lg">
-              Pause — Espace pour reprendre
-            </p>
-          </div>
-        )}
+          {state.paused && !state.gameOver && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
+              <p className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white shadow-lg">
+                Pause — Espace pour reprendre
+              </p>
+            </div>
+          )}
 
-        {state.gameOver && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 p-4 text-center backdrop-blur-[3px]">
-            <p className="text-lg font-semibold text-white">Partie terminée</p>
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-4 rounded-[14px] border border-white/20 bg-white/[0.12] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.18]"
-            >
-              Rejouer
-            </button>
-          </div>
-        )}
+          {state.gameOver && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 p-4 text-center backdrop-blur-[3px]">
+              <p className="text-lg font-semibold text-white">Partie terminée</p>
+              <button
+                type="button"
+                onClick={reset}
+                className="mt-4 rounded-[14px] border border-white/20 bg-white/[0.12] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.18]"
+              >
+                Rejouer
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
