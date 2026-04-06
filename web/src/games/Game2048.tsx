@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   GRID_SIZE,
@@ -29,10 +28,10 @@ function tileClassName(v: number): string {
 type MoveDir = 'up' | 'down' | 'left' | 'right';
 
 // 1) Purpose:
-// - Panneau 2048 centré sans voile sur le fond NaviSphere (calque transparent pour fermer au clic).
+// - Contenu du jeu 2048 à placer dans le panneau central NaviSphere (même emplacement que Streaming / Musique).
 // 2) Key variables: `grid`, `score`, `best` (localStorage), `gameOver`, `wonBanner`, refs pour éviter fermetures obsolètes.
 // 3) Logic flow: entrée → `applyMove` → mise à jour grille + score → tuile aléatoire → contrôle fin de partie / victoire.
-export function Game2048({ onClose }: { onClose: () => void }) {
+export function Game2048() {
   const [grid, setGrid] = useState<Grid>(() => initialGridWithTwoTiles());
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(() => {
@@ -144,52 +143,17 @@ export function Game2048({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <motion.div
-      key="game-2048"
-      role="presentation"
-      className="fixed inset-0 z-[107] flex items-center justify-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
+    <div
+      className="flex max-w-md flex-col gap-3"
+      role="region"
+      aria-label="2048"
     >
-      {/* 4) Calque invisible plein écran : ferme le jeu au clic sans assombrir ni flouter le fond. */}
-      <div className="absolute inset-0" onClick={onClose} aria-hidden />
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="game-2048-title"
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 10, scale: 0.98 }}
-        transition={{ duration: 0.22, ease: 'easeOut' }}
-        className="relative z-[1] w-full max-w-[min(100%,380px)] rounded-[20px] bg-black/30 p-4 shadow-[0_12px_48px_rgba(0,0,0,0.35)] ring-1 ring-white/15"
-        onClick={(ev) => ev.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Jeu</p>
-            <h2 id="game-2048-title" className="text-xl font-semibold text-white">
-              2048
-            </h2>
-            <p className="mt-1 text-xs text-white/45">
-              Fusionnez les tuiles jusqu’à <span className="text-white/70">2048</span>. Flèches ou swipe.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full bg-white/8 p-2 text-white/75 ring-1 ring-white/10 transition hover:bg-white/[0.14]"
-            aria-label="Fermer"
-          >
-            <span className="sr-only">Fermer</span>
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+      {/* 4) Instructions courtes : titre et bouton Fermer sont dans le shell du panneau central (App.tsx). */}
+      <p className="text-xs text-white/45">
+        Fusionnez les tuiles jusqu’à <span className="text-white/70">2048</span>. Flèches ou swipe.
+      </p>
 
-        <div className="mt-3 flex gap-2">
+      <div className="flex gap-2">
           <div className="flex-1 rounded-[12px] bg-black/30 px-3 py-2 text-center ring-1 ring-white/10">
             <p className="text-[10px] uppercase tracking-wider text-white/45">Score</p>
             <p className="text-lg font-semibold text-white">{score}</p>
@@ -198,10 +162,10 @@ export function Game2048({ onClose }: { onClose: () => void }) {
             <p className="text-[10px] uppercase tracking-wider text-white/45">Meilleur</p>
             <p className="text-lg font-semibold text-amber-200/90">{best}</p>
           </div>
-        </div>
+      </div>
 
-        <div
-          className="relative mt-4 touch-none select-none rounded-[14px] bg-black/40 p-2 ring-1 ring-white/10"
+      <div
+          className="relative touch-none select-none rounded-[14px] bg-black/40 p-2 ring-1 ring-white/10"
           onTouchStart={(e) => {
             const t = e.touches[0];
             if (t) setTouchStart({ x: t.clientX, y: t.clientY });
@@ -260,9 +224,9 @@ export function Game2048({ onClose }: { onClose: () => void }) {
               </button>
             </div>
           )}
-        </div>
+      </div>
 
-        <div className="mt-4 flex gap-2">
+      <div className="flex gap-2">
           <button
             type="button"
             onClick={resetGame}
@@ -270,8 +234,7 @@ export function Game2048({ onClose }: { onClose: () => void }) {
           >
             Nouvelle partie
           </button>
-        </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

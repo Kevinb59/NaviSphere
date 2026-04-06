@@ -1457,8 +1457,9 @@ export default function TeslaFuturisticPortalConcept() {
           </motion.div>
 
           <AnimatePresence>
-            {(isSearchPanelOpen || activeCenterCategory) && (
+            {(isSearchPanelOpen || activeCenterCategory || openGameId) && (
               <motion.div
+                key={openGameId ? `game-${openGameId}` : 'center-panel'}
                 initial={{ opacity: 0, y: 16, scale: 0.985 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 14, scale: 0.985 }}
@@ -1466,38 +1467,51 @@ export default function TeslaFuturisticPortalConcept() {
                 className="absolute left-[calc(1.5rem+clamp(208px,22vw,268px)+0.5rem)] right-[calc(1rem+clamp(208px,22vw,268px)+0.5rem)] top-4 bottom-[10%] z-30 rounded-[20px] bg-black/30 p-5 ring-1 ring-white/10 backdrop-blur-2xl"
               >
                 {/* 1) Purpose:
-                    - Donner une ouverture/fermeture fluide au panneau central (Streaming ou Musique).
+                    - Panneau central : catalogues (Streaming, etc.) ou mini-jeu intégré ; le reste de l’écran reste visible.
                     2) Key variables:
-                    - `initial/animate/exit`: états d'animation d'apparition/disparition.
-                    - `activeCenterCategory`: contrôle la catégorie rendue dans l'espace central.
+                    - `openGameId`: prioritaire sur la grille de services quand un jeu est lancé.
+                    - `activeCenterCategory` / `isSearchPanelOpen`: catalogues et recherche.
                     3) Logic flow:
-                    - Au clic sur une catégorie supportée, le panneau fade+slide+zoom; au clic Fermer, il disparaît avec la transition inverse. */}
+                    - Fermer vide d’abord le jeu, puis la recherche, puis la catégorie. */}
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">
-                      {isSearchPanelOpen ? 'Recherche' : activeCenterCategory}
+                      {openGameId === '2048'
+                        ? 'Jeu'
+                        : isSearchPanelOpen
+                          ? 'Recherche'
+                          : activeCenterCategory}
                     </p>
-                    <h3 className="mt-1 text-lg font-medium text-white">
-                      {isSearchPanelOpen
-                        ? 'Résultats'
-                        : activeCenterCategory === 'Musique'
-                          ? 'Services musicaux'
-                          : activeCenterCategory === 'Jeux'
-                            ? 'Services de jeux'
-                            : activeCenterCategory === 'Réseaux sociaux'
-                              ? 'Plateformes sociales'
-                              : activeCenterCategory === 'Communication'
-                                ? 'Services de communication'
-                                : activeCenterCategory === 'Navigation'
-                                  ? 'Services de navigation'
-                                  : activeCenterCategory === 'Recharge'
-                                    ? 'Services de recharge'
-                              : 'Services vidéo'}
+                    <h3
+                      id={openGameId === '2048' ? 'game-2048-title' : undefined}
+                      className="mt-1 text-lg font-medium text-white"
+                    >
+                      {openGameId === '2048'
+                        ? '2048'
+                        : isSearchPanelOpen
+                          ? 'Résultats'
+                          : activeCenterCategory === 'Musique'
+                            ? 'Services musicaux'
+                            : activeCenterCategory === 'Jeux'
+                              ? 'Services de jeux'
+                              : activeCenterCategory === 'Réseaux sociaux'
+                                ? 'Plateformes sociales'
+                                : activeCenterCategory === 'Communication'
+                                  ? 'Services de communication'
+                                  : activeCenterCategory === 'Navigation'
+                                    ? 'Services de navigation'
+                                    : activeCenterCategory === 'Recharge'
+                                      ? 'Services de recharge'
+                                : 'Services vidéo'}
                     </h3>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
+                      if (openGameId) {
+                        setOpenGameId(null);
+                        return;
+                      }
                       if (isSearchPanelOpen) {
                         setSearchQuery('');
                         return;
@@ -1511,38 +1525,44 @@ export default function TeslaFuturisticPortalConcept() {
                   </button>
                 </div>
 
-                <div className="relative h-[calc(100%-56px)]">
-                  <div className="no-scrollbar center-scroll-fade grid h-full content-start grid-cols-2 gap-3 overflow-y-auto pr-1 pb-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                    {(isSearchPanelOpen
-                      ? sortedSearchServices
-                      : activeCenterCategory === 'Musique'
-                        ? sortedMusicServices
-                        : activeCenterCategory === 'Jeux'
-                          ? sortedGameServices
-                          : activeCenterCategory === 'Réseaux sociaux'
-                            ? sortedSocialServices
-                            : activeCenterCategory === 'Communication'
-                              ? sortedCommunicationServices
-                              : activeCenterCategory === 'Navigation'
-                                ? sortedNavigationServices
-                                : activeCenterCategory === 'Recharge'
-                                  ? sortedChargingServices
-                        : sortedStreamingServices
-                    ).map((service) => (
-                      <ServiceCatalogTile
-                        key={service.id}
-                        service={service}
-                        logoUrl={logoUrl}
-                        onLongPressIntent={() => handleLongPressFavoriteIntent(service.id)}
-                      />
-                    ))}
-                    {isSearchPanelOpen && sortedSearchServices.length === 0 && (
-                      <div className="col-span-full rounded-[14px] bg-white/[0.055] p-4 text-sm text-white/65 ring-1 ring-white/10">
-                        Aucun service ne commence par "{searchQuery.trim()}".
-                      </div>
-                    )}
+                {openGameId === '2048' ? (
+                  <div className="relative h-[calc(100%-56px)] overflow-y-auto pr-1 pb-8">
+                    <Game2048 />
                   </div>
-                </div>
+                ) : (
+                  <div className="relative h-[calc(100%-56px)]">
+                    <div className="no-scrollbar center-scroll-fade grid h-full content-start grid-cols-2 gap-3 overflow-y-auto pr-1 pb-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                      {(isSearchPanelOpen
+                        ? sortedSearchServices
+                        : activeCenterCategory === 'Musique'
+                          ? sortedMusicServices
+                          : activeCenterCategory === 'Jeux'
+                            ? sortedGameServices
+                            : activeCenterCategory === 'Réseaux sociaux'
+                              ? sortedSocialServices
+                              : activeCenterCategory === 'Communication'
+                                ? sortedCommunicationServices
+                                : activeCenterCategory === 'Navigation'
+                                  ? sortedNavigationServices
+                                  : activeCenterCategory === 'Recharge'
+                                    ? sortedChargingServices
+                          : sortedStreamingServices
+                      ).map((service) => (
+                        <ServiceCatalogTile
+                          key={service.id}
+                          service={service}
+                          logoUrl={logoUrl}
+                          onLongPressIntent={() => handleLongPressFavoriteIntent(service.id)}
+                        />
+                      ))}
+                      {isSearchPanelOpen && sortedSearchServices.length === 0 && (
+                        <div className="col-span-full rounded-[14px] bg-white/[0.055] p-4 text-sm text-white/65 ring-1 ring-white/10">
+                          Aucun service ne commence par "{searchQuery.trim()}".
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1951,16 +1971,6 @@ export default function TeslaFuturisticPortalConcept() {
               )}
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 1) Purpose:
-          - Mini-jeux en panneau centré (2048, etc.) sans assombrir le fond ; fermeture clic extérieur ou bouton.
-          2) Key variables: `openGameId` synchronisé avec `navisphereGames`.
-          3) Logic flow: `AnimatePresence` pour la sortie animée du composant jeu. */}
-      <AnimatePresence>
-        {openGameId === '2048' && (
-          <Game2048 key="game-2048-modal" onClose={() => setOpenGameId(null)} />
         )}
       </AnimatePresence>
 
