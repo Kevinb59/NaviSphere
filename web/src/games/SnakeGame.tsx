@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  GRID_SIZE,
+  GRID_HEIGHT,
+  GRID_WIDTH,
   type Dir,
   type Point,
   type SnakeState,
@@ -85,9 +86,9 @@ function drawImageInCell(
   ctx.restore();
 }
 
-// 1) Purpose: traînée « tube de lumière » entre centres de cases — pas de remplissage carré, rendu futuriste.
-// 2) Key variables: teinte le long du corps (cyan → fuchsia) ; passes superposées (lueur + cœur brillant).
-// 3) Logic flow: pour chaque arête serpent[i]→serpent[i+1], trois traits + mode lighter sur les halos.
+// 1) Purpose: traînée continue (un seul chemin) — dégradé tête→queue pour atténuer la fin, sans « points » aux jonctions.
+// 2) Key variables: gradient linéaire du centre tête au centre queue ; lineJoin round pour virages fluides.
+// 3) Logic flow: polyline unique → plusieurs strokes superposés (halos + cœur) sur le même tracé.
 function drawLightTrail(
   ctx: CanvasRenderingContext2D,
   snake: Point[],
@@ -99,53 +100,58 @@ function drawLightTrail(
 
   const cx = (p: Point) => ox + p.x * cell + cell / 2;
   const cy = (p: Point) => oy + p.y * cell + cell / 2;
-  const maxI = Math.max(1, snake.length - 2);
+  const head = snake[0]!;
+  const tail = snake[snake.length - 1]!;
+  const hx = cx(head);
+  const hy = cy(head);
+  const tx = cx(tail);
+  const ty = cy(tail);
 
-  const strokeSeg = (
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    hue: number,
-    useLighter: boolean,
-  ) => {
-    if (useLighter) ctx.globalCompositeOperation = 'lighter';
-    else ctx.globalCompositeOperation = 'source-over';
-
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    ctx.strokeStyle = `hsla(${hue}, 100%, 58%, 0.22)`;
-    ctx.lineWidth = cell * 0.58;
-    ctx.shadowBlur = cell * 0.55;
-    ctx.shadowColor = `hsla(${hue}, 100%, 55%, 0.9)`;
-    ctx.stroke();
-
-    ctx.strokeStyle = `hsla(${hue}, 98%, 68%, 0.42)`;
-    ctx.lineWidth = cell * 0.34;
-    ctx.shadowBlur = cell * 0.28;
-    ctx.shadowColor = `hsla(${hue}, 95%, 70%, 0.75)`;
-    ctx.stroke();
-
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = `hsla(${hue}, 40%, 96%, 0.98)`;
-    ctx.lineWidth = cell * 0.1;
-    ctx.stroke();
-  };
-
-  for (let i = 0; i < snake.length - 1; i++) {
-    const t = i / maxI;
-    const hue = 188 + t * 152;
-    const p1 = snake[i]!;
-    const p2 = snake[i + 1]!;
-    strokeSeg(cx(p1), cy(p1), cx(p2), cy(p2), hue, true);
+  ctx.beginPath();
+  ctx.moveTo(hx, hy);
+  for (let i = 1; i < snake.length; i++) {
+    ctx.lineTo(cx(snake[i]!), cy(snake[i]!));
   }
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
 
-  ctx.globalCompositeOperation = 'source-over';
+  const gWide = ctx.createLinearGradient(hx, hy, tx, ty);
+  gWide.addColorStop(0, 'rgba(160, 245, 255, 0.38)');
+  gWide.addColorStop(0.25, 'rgba(100, 200, 255, 0.28)');
+  gWide.addColorStop(0.55, 'rgba(140, 120, 255, 0.16)');
+  gWide.addColorStop(0.82, 'rgba(90, 60, 160, 0.07)');
+  gWide.addColorStop(1, 'rgba(40, 25, 80, 0.02)');
+
+  ctx.strokeStyle = gWide;
+  ctx.lineWidth = cell * 0.58;
+  ctx.shadowBlur = cell * 0.48;
+  ctx.shadowColor = 'rgba(130, 210, 255, 0.55)';
+  ctx.stroke();
+
+  const gMid = ctx.createLinearGradient(hx, hy, tx, ty);
+  gMid.addColorStop(0, 'rgba(220, 255, 255, 0.5)');
+  gMid.addColorStop(0.35, 'rgba(140, 210, 255, 0.32)');
+  gMid.addColorStop(0.7, 'rgba(180, 140, 255, 0.14)');
+  gMid.addColorStop(1, 'rgba(120, 100, 200, 0.04)');
+
+  ctx.strokeStyle = gMid;
+  ctx.lineWidth = cell * 0.32;
+  ctx.shadowBlur = cell * 0.22;
+  ctx.shadowColor = 'rgba(180, 230, 255, 0.45)';
+  ctx.stroke();
+
+  const gCore = ctx.createLinearGradient(hx, hy, tx, ty);
+  gCore.addColorStop(0, 'rgba(255, 255, 255, 0.92)');
+  gCore.addColorStop(0.4, 'rgba(230, 248, 255, 0.35)');
+  gCore.addColorStop(0.75, 'rgba(200, 220, 255, 0.1)');
+  gCore.addColorStop(1, 'rgba(180, 200, 255, 0.02)');
+
+  ctx.strokeStyle = gCore;
+  ctx.lineWidth = cell * 0.09;
+  ctx.shadowBlur = cell * 0.12;
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.35)';
+  ctx.stroke();
+
   ctx.shadowBlur = 0;
 }
 
@@ -159,11 +165,11 @@ function drawGame(
   state: SnakeState,
   assets: { head: HTMLImageElement; food: HTMLImageElement } | null,
 ) {
-  const cell = Math.min(width, height) / GRID_SIZE;
-  const ox = (width - cell * GRID_SIZE) / 2;
-  const oy = (height - cell * GRID_SIZE) / 2;
-  const gw = cell * GRID_SIZE;
-  const gh = cell * GRID_SIZE;
+  const cell = Math.min(width / GRID_WIDTH, height / GRID_HEIGHT);
+  const gw = cell * GRID_WIDTH;
+  const gh = cell * GRID_HEIGHT;
+  const ox = (width - gw) / 2;
+  const oy = (height - gh) / 2;
 
   const rg = ctx.createRadialGradient(
     width * 0.5,
@@ -183,14 +189,17 @@ function drawGame(
   ctx.lineWidth = 1;
   ctx.strokeRect(ox + 0.5, oy + 0.5, gw - 1, gh - 1);
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.028)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.024)';
   ctx.lineWidth = 1;
-  for (let i = 0; i <= GRID_SIZE; i += 2) {
+  for (let i = 0; i <= GRID_WIDTH; i += 2) {
     const p = i * cell;
     ctx.beginPath();
     ctx.moveTo(ox + p, oy);
     ctx.lineTo(ox + p, oy + gh);
     ctx.stroke();
+  }
+  for (let j = 0; j <= GRID_HEIGHT; j += 2) {
+    const p = j * cell;
     ctx.beginPath();
     ctx.moveTo(ox, oy + p);
     ctx.lineTo(ox + gw, oy + p);
@@ -311,14 +320,15 @@ export function SnakeGame() {
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => {
+    const fit = () => {
       const w = el.clientWidth || 320;
-      const h = Math.min(w, 380);
+      // 4) Hauteur alignée sur le ratio 40×25 pour des cases carrées, sans écraser la grille.
+      const h = Math.min(520, Math.max(220, (w * GRID_HEIGHT) / GRID_WIDTH));
       setBounds({ w, h });
-    });
+    };
+    const ro = new ResizeObserver(fit);
     ro.observe(el);
-    const w = el.clientWidth || 320;
-    setBounds({ w, h: Math.min(w, 380) });
+    fit();
     return () => ro.disconnect();
   }, []);
 
@@ -438,7 +448,7 @@ export function SnakeGame() {
       >
         <canvas
           ref={canvasRef}
-          className="block w-full max-h-[380px]"
+          className="block w-full max-h-[min(520px,85vh)]"
           aria-label="Aire de jeu Snake Tesla"
         />
 

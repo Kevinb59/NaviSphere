@@ -1,6 +1,6 @@
 // 1) Purpose:
 // - Logique pure du Snake (grille, déplacements, nourriture, score) — inspirée des jeux canvas classiques.
-// 2) Key variables: `GRID_SIZE` ; `Dir` ; segments `snake` comme liste tête → queue.
+// 2) Key variables: `GRID_WIDTH` × `GRID_HEIGHT` ; `Dir` ; segments `snake` comme liste tête → queue.
 // 3) Logic flow: `step` avance d’une case ; `queueDirection` enregistre un prochain virage (pas de demi-tour).
 
 export type Dir = 'up' | 'down' | 'left' | 'right';
@@ -10,7 +10,8 @@ export interface Point {
   y: number;
 }
 
-export const GRID_SIZE = 18;
+export const GRID_WIDTH = 40;
+export const GRID_HEIGHT = 25;
 
 export interface SnakeState {
   snake: Point[];
@@ -36,8 +37,8 @@ export function isOpposite(a: Dir, b: Dir): boolean {
 
 function randomFoodPosition(occupied: Set<string>): Point | null {
   const empties: Point[] = [];
-  for (let y = 0; y < GRID_SIZE; y++) {
-    for (let x = 0; x < GRID_SIZE; x++) {
+  for (let y = 0; y < GRID_HEIGHT; y++) {
+    for (let x = 0; x < GRID_WIDTH; x++) {
       const k = `${x},${y}`;
       if (!occupied.has(k)) empties.push({ x, y });
     }
@@ -46,15 +47,16 @@ function randomFoodPosition(occupied: Set<string>): Point | null {
   return empties[Math.floor(Math.random() * empties.length)]!;
 }
 
-// 1) Purpose: état initial — serpent horizontal au centre, une pomme aléatoire.
+// 1) Purpose: état initial — serpent horizontal au centre de la grille 40×25, une pomme aléatoire.
 // 2) Key variables: 3 segments pour démarrer lisiblement.
 // 3) Logic flow: direction « right ».
 export function createInitialSnakeState(): SnakeState {
-  const mid = Math.floor(GRID_SIZE / 2);
+  const midX = Math.floor(GRID_WIDTH / 2);
+  const midY = Math.floor(GRID_HEIGHT / 2);
   const snake: Point[] = [
-    { x: mid - 1, y: mid },
-    { x: mid - 2, y: mid },
-    { x: mid - 3, y: mid },
+    { x: midX - 1, y: midY },
+    { x: midX - 2, y: midY },
+    { x: midX - 3, y: midY },
   ];
   const occ = new Set(snake.map((p) => `${p.x},${p.y}`));
   const food = randomFoodPosition(occ) ?? { x: 0, y: 0 };
@@ -96,7 +98,7 @@ export function stepSnake(state: SnakeState): SnakeState {
   const head = state.snake[0]!;
   const next = headOffset(head, dir);
 
-  if (next.x < 0 || next.x >= GRID_SIZE || next.y < 0 || next.y >= GRID_SIZE) {
+  if (next.x < 0 || next.x >= GRID_WIDTH || next.y < 0 || next.y >= GRID_HEIGHT) {
     return { ...state, gameOver: true, pendingDirection: null };
   }
 
@@ -150,8 +152,8 @@ export function queueSnakeDirection(state: SnakeState, newDir: Dir): SnakeState 
 // 2) Key variables: `score` pour paliers tous les 50 points.
 // 3) Logic flow: plancher ~80 ms pour rester jouable.
 export function tickMsForScore(score: number): number {
-  const base = 150;
-  const min = 80;
+  const base = 125;
+  const min = 68;
   const steps = Math.floor(score / 50);
-  return Math.max(min, base - steps * 8);
+  return Math.max(min, base - steps * 6);
 }
