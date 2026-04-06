@@ -114,6 +114,12 @@ const quickMenuItems = [
   { title: 'Réseaux sociaux', icon: ScreenShare },
 ];
 
+// 1) Purpose:
+// - Mini-jeux intégrés à NaviSphere (développés dans ce dépôt) ; liste affichée dans l’encart gauche « Jeux NaviSphere ».
+// 2) Key variables: `id` stable (clé React / routing futur) ; `title` libellé du bouton.
+// 3) Logic flow: tableau vide → message d’attente ; ajouter des entrées puis brancher ouverture (modal, route, canvas).
+const navisphereGames: { id: string; title: string }[] = [];
+
 const musicServicesRaw = [
   { name: 'Apple Music', domain: 'music.apple.com', href: 'https://music.apple.com/fr/', icon: Music2 },
   { name: 'Amazon Music', domain: 'music.amazon.fr', href: 'https://music.amazon.fr/', icon: Music2 },
@@ -1368,6 +1374,34 @@ export default function TeslaFuturisticPortalConcept() {
                   Rechercher
                 </button>
               </div>
+            </div>
+
+            <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Jeux NaviSphere</p>
+              {/* 1) Purpose:
+                  - Point d’entrée vers les jeux maison ; contenu piloté par `navisphereGames`.
+                  2) Key variables: `navisphereGames` (module supérieur) ; rendu conditionnel liste vide / liste de boutons.
+                  3) Logic flow: ajouter des jeux dans le tableau puis raccorder navigation ou lancement. */}
+              {navisphereGames.length === 0 ? (
+                <div className="mt-3 flex items-start gap-2 rounded-[12px] bg-black/25 px-3 py-3 ring-1 ring-white/10">
+                  <Gamepad2 className="mt-0.5 h-4 w-4 shrink-0 text-white/45" aria-hidden />
+                  <p className="text-sm leading-relaxed text-white/55">
+                    Les mini-jeux intégrés apparaîtront ici au fur et à mesure du développement.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {navisphereGames.map((game) => (
+                    <button
+                      key={game.id}
+                      type="button"
+                      className="w-full rounded-[12px] bg-white/[0.055] px-3 py-2.5 text-left text-sm font-medium text-white ring-1 ring-white/10 transition hover:bg-white/[0.1]"
+                    >
+                      {game.title}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
 
