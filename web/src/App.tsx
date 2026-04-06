@@ -369,8 +369,12 @@ export default function TeslaFuturisticPortalConcept() {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   // 1) Purpose: ouvrir un mini-jeu NaviSphere (ex. 2048) en modale plein écran.
   // 2) Key variables: `id` aligné sur `navisphereGames`.
-  // 3) Logic flow: clic sur un bouton jeu → id ; fermeture → null.
+  // 3) Logic flow: choix dans la modale « Jeux NaviSphere » → id ; fermeture → null.
   const [openGameId, setOpenGameId] = useState<string | null>(null);
+  // 1) Purpose: modale catalogue des jeux intégrés (liste + lancement), ouverte via « Ouvrir » dans la colonne gauche.
+  // 2) Key variables: distinct de `openGameId` (le jeu plein écran se superpose après « Jouer »).
+  // 3) Logic flow: Ouvrir → true ; overlay / X / lancement d’un jeu → false.
+  const [navisphereGamesModalOpen, setNavisphereGamesModalOpen] = useState(false);
   const [dockBannerMessage, setDockBannerMessage] = useState('');
 
   const isLoggedIn = sessionCredentials !== null;
@@ -1382,32 +1386,27 @@ export default function TeslaFuturisticPortalConcept() {
             </div>
 
             <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Jeux NaviSphere</p>
+              <div className="mb-3">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Jeux NaviSphere</p>
+              </div>
               {/* 1) Purpose:
-                  - Point d’entrée vers les jeux maison ; contenu piloté par `navisphereGames`.
-                  2) Key variables: `navisphereGames` (module supérieur) ; rendu conditionnel liste vide / liste de boutons.
-                  3) Logic flow: ajouter des jeux dans le tableau puis raccorder navigation ou lancement. */}
-              {navisphereGames.length === 0 ? (
-                <div className="mt-3 flex items-start gap-2 rounded-[12px] bg-black/25 px-3 py-3 ring-1 ring-white/10">
-                  <Gamepad2 className="mt-0.5 h-4 w-4 shrink-0 text-white/45" aria-hidden />
-                  <p className="text-sm leading-relaxed text-white/55">
-                    Les mini-jeux intégrés apparaîtront ici au fur et à mesure du développement.
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-3 space-y-2">
-                  {navisphereGames.map((game) => (
-                    <button
-                      key={game.id}
-                      type="button"
-                      onClick={() => setOpenGameId(game.id)}
-                      className="w-full rounded-[12px] bg-white/[0.055] px-3 py-2.5 text-left text-sm font-medium text-white ring-1 ring-white/10 transition hover:bg-white/[0.1]"
-                    >
-                      {game.title}
-                    </button>
-                  ))}
-                </div>
-              )}
+                  - Même interaction que les accès rapides (Streaming, Musique…) : bouton « Ouvrir » → modale catalogue.
+                  2) Key variables: `navisphereGamesModalOpen` pour l’état actif du bouton ; jeux dans `navisphereGames`.
+                  3) Logic flow: clic Ouvrir → modale liste ; Jouer sur une entrée → ferme le catalogue et ouvre le jeu. */}
+              <button
+                type="button"
+                onClick={() => setNavisphereGamesModalOpen(true)}
+                className={`w-full rounded-[14px] px-4 py-3 text-left text-sm font-medium text-white ring-1 transition ${
+                  navisphereGamesModalOpen
+                    ? 'bg-white/[0.16] ring-white/30'
+                    : 'bg-white/[0.055] ring-white/10 hover:bg-white/[0.08]'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Gamepad2 className="h-4 w-4 text-white/80" aria-hidden />
+                  Ouvrir
+                </span>
+              </button>
             </div>
           </motion.div>
 
@@ -1870,6 +1869,90 @@ export default function TeslaFuturisticPortalConcept() {
             onConfirm={() => void confirmFavoriteAdd()}
             onCancel={() => setFavoritePendingServiceId(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* 1) Purpose:
+          - Catalogue des mini-jeux NaviSphere avant lancement (même style de modale que l’aide).
+          2) Key variables: `navisphereGames` ; z-index sous le jeu plein écran.
+          3) Logic flow: fermeture overlay / X ; « Jouer » ferme ce panneau et définit `openGameId`. */}
+      <AnimatePresence>
+        {navisphereGamesModalOpen && (
+          <motion.div
+            key="navisphere-games-picker"
+            className="fixed inset-0 z-[106] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            <motion.div
+              role="presentation"
+              className="absolute inset-0 bg-black/35 backdrop-blur-[6px]"
+              onClick={() => setNavisphereGamesModalOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="navisphere-games-modal-title"
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.99 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative z-[1] w-full max-w-md rounded-[18px] bg-[#11151b]/95 p-5 shadow-[0_32px_100px_rgba(0,0,0,0.5)] ring-1 ring-white/10 backdrop-blur-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setNavisphereGamesModalOpen(false)}
+                className="absolute right-3 top-3 rounded-full bg-white/8 p-2 text-white/75 ring-1 ring-white/10 transition hover:bg-white/[0.14]"
+                aria-label="Fermer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">NaviSphere</p>
+              <h3 id="navisphere-games-modal-title" className="mt-1 pr-8 text-lg font-medium text-white">
+                Jeux intégrés
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/55">
+                Choisissez un jeu à lancer. Les parties s’ouvrent en plein écran.
+              </p>
+              {navisphereGames.length > 0 ? (
+                <ul className="mt-5 space-y-3">
+                  {navisphereGames.map((game) => (
+                    <li
+                      key={game.id}
+                      className="flex flex-col gap-2 rounded-[14px] bg-white/[0.055] p-3 ring-1 ring-white/10 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-white">{game.title}</p>
+                        {game.id === '2048' && (
+                          <p className="mt-0.5 text-xs text-white/45">Puzzle par fusion de tuiles — atteignez 2048.</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenGameId(game.id);
+                          setNavisphereGamesModalOpen(false);
+                        }}
+                        className="shrink-0 rounded-[12px] bg-white/[0.12] px-4 py-2 text-sm font-medium text-white ring-1 ring-white/15 transition hover:bg-white/[0.18]"
+                      >
+                        Jouer
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 rounded-[12px] bg-black/25 px-3 py-3 text-sm text-white/55 ring-1 ring-white/10">
+                  Aucun jeu disponible pour le moment.
+                </p>
+              )}
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
