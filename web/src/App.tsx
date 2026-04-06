@@ -25,6 +25,7 @@ import { FavoriteConfirmModal } from './components/FavoriteConfirmModal';
 import { ServiceCatalogTile } from './components/ServiceCatalogTile';
 import { SpaceXUpcomingLaunch } from './components/SpaceXUpcomingLaunch';
 import { Game2048 } from './games/Game2048';
+import { SnakeGame } from './games/SnakeGame';
 import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
 // 1) Purpose:
@@ -119,7 +120,10 @@ const quickMenuItems = [
 // - Mini-jeux intégrés à NaviSphere (développés dans ce dépôt) ; liste affichée dans l’encart gauche « Jeux NaviSphere ».
 // 2) Key variables: `id` stable (clé React / routing futur) ; `title` libellé du bouton.
 // 3) Logic flow: tableau vide → message d’attente ; entrées avec `id` → `openGameId` ouvre la modale correspondante.
-const navisphereGames: { id: string; title: string }[] = [{ id: '2048', title: '2048' }];
+const navisphereGames: { id: string; title: string }[] = [
+  { id: '2048', title: '2048' },
+  { id: 'snake', title: 'Snake' },
+];
 
 const musicServicesRaw = [
   { name: 'Apple Music', domain: 'music.apple.com', href: 'https://music.apple.com/fr/', icon: Music2 },
@@ -1476,19 +1480,27 @@ export default function TeslaFuturisticPortalConcept() {
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">
-                      {openGameId === '2048'
+                      {openGameId === '2048' || openGameId === 'snake'
                         ? 'Jeu'
                         : isSearchPanelOpen
                           ? 'Recherche'
                           : activeCenterCategory}
                     </p>
                     <h3
-                      id={openGameId === '2048' ? 'game-2048-title' : undefined}
+                      id={
+                        openGameId === '2048'
+                          ? 'game-2048-title'
+                          : openGameId === 'snake'
+                            ? 'game-snake-title'
+                            : undefined
+                      }
                       className="mt-1 text-lg font-medium text-white"
                     >
                       {openGameId === '2048'
                         ? '2048'
-                        : isSearchPanelOpen
+                        : openGameId === 'snake'
+                          ? 'Snake'
+                          : isSearchPanelOpen
                           ? 'Résultats'
                           : activeCenterCategory === 'Musique'
                             ? 'Services musicaux'
@@ -1528,6 +1540,10 @@ export default function TeslaFuturisticPortalConcept() {
                 {openGameId === '2048' ? (
                   <div className="relative h-[calc(100%-56px)] overflow-y-auto pr-1 pb-8">
                     <Game2048 />
+                  </div>
+                ) : openGameId === 'snake' ? (
+                  <div className="relative h-[calc(100%-56px)] overflow-y-auto pr-1 pb-8">
+                    <SnakeGame />
                   </div>
                 ) : (
                   <div className="relative h-[calc(100%-56px)]">
@@ -1949,6 +1965,11 @@ export default function TeslaFuturisticPortalConcept() {
                         <p className="text-sm font-medium text-white">{game.title}</p>
                         {game.id === '2048' && (
                           <p className="mt-0.5 text-xs text-white/45">Puzzle par fusion de tuiles — atteignez 2048.</p>
+                        )}
+                        {game.id === 'snake' && (
+                          <p className="mt-0.5 text-xs text-white/45">
+                            Serpent sur grille — swipe sur l’aire de jeu pour tourner.
+                          </p>
                         )}
                       </div>
                       <button
