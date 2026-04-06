@@ -1542,7 +1542,7 @@ export default function TeslaFuturisticPortalConcept() {
                     <Game2048 />
                   </div>
                 ) : openGameId === 'snake' ? (
-                  <div className="relative h-[calc(100%-56px)] overflow-y-auto pr-1 pb-8">
+                  <div className="relative flex h-[calc(100%-56px)] min-h-0 flex-col overflow-hidden pr-1">
                     <SnakeGame />
                   </div>
                 ) : (

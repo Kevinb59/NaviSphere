@@ -86,35 +86,49 @@ function drawImageInCell(
   ctx.restore();
 }
 
-// 1) Purpose: traînée continue (un seul chemin) — dégradé tête→queue pour atténuer la fin, sans « points » aux jonctions.
-// 2) Key variables: gradient linéaire du centre tête au centre queue ; lineJoin round pour virages fluides.
-// 3) Logic flow: polyline unique → plusieurs strokes superposés (halos + cœur) sur le même tracé.
+// 1) Purpose: traînée continue — dégradé tête→queue ; sans segment « tunnel » qui traverse tout l’écran.
+// 2) Key variables: `cellW`/`cellH` cases rectangulaires ; `maxStep` seuil pour détecter un wrap tore ≠ voisinage écran.
+// 3) Logic flow: si distance écran entre deux cases consécutives > maxStep → moveTo (nouvelle sous-polyligne) au lieu de lineTo.
 function drawLightTrail(
   ctx: CanvasRenderingContext2D,
   snake: Point[],
   ox: number,
   oy: number,
-  cell: number,
+  cellW: number,
+  cellH: number,
 ) {
   if (snake.length < 2) return;
 
-  const cx = (p: Point) => ox + p.x * cell + cell / 2;
-  const cy = (p: Point) => oy + p.y * cell + cell / 2;
+  const cx = (p: Point) => ox + p.x * cellW + cellW / 2;
+  const cy = (p: Point) => oy + p.y * cellH + cellH / 2;
   const head = snake[0]!;
   const tail = snake[snake.length - 1]!;
   const hx = cx(head);
   const hy = cy(head);
   const tx = cx(tail);
   const ty = cy(tail);
+  const maxStep = Math.hypot(cellW, cellH) * 1.55;
 
   ctx.beginPath();
   ctx.moveTo(hx, hy);
   for (let i = 1; i < snake.length; i++) {
-    ctx.lineTo(cx(snake[i]!), cy(snake[i]!));
+    const prev = snake[i - 1]!;
+    const cur = snake[i]!;
+    const px = cx(prev);
+    const py = cy(prev);
+    const x = cx(cur);
+    const y = cy(cur);
+    const dist = Math.hypot(x - px, y - py);
+    if (dist > maxStep) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
   }
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
+  const cellRef = Math.min(cellW, cellH);
   const gWide = ctx.createLinearGradient(hx, hy, tx, ty);
   gWide.addColorStop(0, 'rgba(160, 245, 255, 0.38)');
   gWide.addColorStop(0.25, 'rgba(100, 200, 255, 0.28)');
@@ -123,8 +137,8 @@ function drawLightTrail(
   gWide.addColorStop(1, 'rgba(40, 25, 80, 0.02)');
 
   ctx.strokeStyle = gWide;
-  ctx.lineWidth = cell * 0.58;
-  ctx.shadowBlur = cell * 0.48;
+  ctx.lineWidth = cellRef * 0.58;
+  ctx.shadowBlur = cellRef * 0.48;
   ctx.shadowColor = 'rgba(130, 210, 255, 0.55)';
   ctx.stroke();
 
@@ -135,8 +149,8 @@ function drawLightTrail(
   gMid.addColorStop(1, 'rgba(120, 100, 200, 0.04)');
 
   ctx.strokeStyle = gMid;
-  ctx.lineWidth = cell * 0.32;
-  ctx.shadowBlur = cell * 0.22;
+  ctx.lineWidth = cellRef * 0.32;
+  ctx.shadowBlur = cellRef * 0.22;
   ctx.shadowColor = 'rgba(180, 230, 255, 0.45)';
   ctx.stroke();
 
@@ -147,17 +161,17 @@ function drawLightTrail(
   gCore.addColorStop(1, 'rgba(180, 200, 255, 0.02)');
 
   ctx.strokeStyle = gCore;
-  ctx.lineWidth = cell * 0.09;
-  ctx.shadowBlur = cell * 0.12;
+  ctx.lineWidth = cellRef * 0.09;
+  ctx.shadowBlur = cellRef * 0.12;
   ctx.shadowColor = 'rgba(255, 255, 255, 0.35)';
   ctx.stroke();
 
   ctx.shadowBlur = 0;
 }
 
-// 1) Purpose: rendu premium — fond nébuleux, grille quasi invisible, éclair + traînée lumineuse, Tesla agrandie au-dessus.
-// 2) Key variables: `state.direction` pour la rotation ; `maxFill` tête ~1.3, pomme ~1.12.
-// 3) Logic flow: fond → cadre léger → collectibles → traînée → tête.
+// 1) Purpose: rendu premium — grille 40×25 étirée sur tout le canvas (cases rectangulaires, pas de bandes).
+// 2) Key variables: `cellW`/`cellH` ; `cellRef` = min pour sprites et épaisseurs de trait proportionnels.
+// 3) Logic flow: fond plein écran → cadre → collectibles → traînée → tête.
 function drawGame(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -165,11 +179,13 @@ function drawGame(
   state: SnakeState,
   assets: { head: HTMLImageElement; food: HTMLImageElement } | null,
 ) {
-  const cell = Math.min(width / GRID_WIDTH, height / GRID_HEIGHT);
-  const gw = cell * GRID_WIDTH;
-  const gh = cell * GRID_HEIGHT;
-  const ox = (width - gw) / 2;
-  const oy = (height - gh) / 2;
+  const cellW = width / GRID_WIDTH;
+  const cellH = height / GRID_HEIGHT;
+  const cellRef = Math.min(cellW, cellH);
+  const gw = width;
+  const gh = height;
+  const ox = 0;
+  const oy = 0;
 
   const rg = ctx.createRadialGradient(
     width * 0.5,
@@ -192,63 +208,65 @@ function drawGame(
   ctx.strokeStyle = 'rgba(255,255,255,0.024)';
   ctx.lineWidth = 1;
   for (let i = 0; i <= GRID_WIDTH; i += 2) {
-    const p = i * cell;
+    const p = i * cellW;
     ctx.beginPath();
     ctx.moveTo(ox + p, oy);
     ctx.lineTo(ox + p, oy + gh);
     ctx.stroke();
   }
   for (let j = 0; j <= GRID_HEIGHT; j += 2) {
-    const p = j * cell;
+    const p = j * cellH;
     ctx.beginPath();
     ctx.moveTo(ox, oy + p);
     ctx.lineTo(ox + gw, oy + p);
     ctx.stroke();
   }
 
-  const foodCx = ox + state.food.x * cell + cell / 2;
-  const foodCy = oy + state.food.y * cell + cell / 2;
+  const foodCx = ox + state.food.x * cellW + cellW / 2;
+  const foodCy = oy + state.food.y * cellH + cellH / 2;
   if (assets?.food?.complete && assets.food.naturalWidth > 0) {
     ctx.save();
-    ctx.shadowBlur = cell * 0.35;
+    ctx.shadowBlur = cellRef * 0.35;
     ctx.shadowColor = 'rgba(251, 191, 36, 0.55)';
-    drawImageInCell(ctx, assets.food, foodCx, foodCy, cell, 1.12);
+    drawImageInCell(ctx, assets.food, foodCx, foodCy, cellRef, 1.12);
     ctx.restore();
   } else {
     ctx.fillStyle = 'rgba(251, 113, 133, 0.95)';
-    const pad = cell * 0.08;
+    const padX = cellW * 0.08;
+    const padY = cellH * 0.08;
     fillRoundRect(
       ctx,
-      ox + state.food.x * cell + pad,
-      oy + state.food.y * cell + pad,
-      cell - 2 * pad,
-      cell - 2 * pad,
-      cell * 0.2,
+      ox + state.food.x * cellW + padX,
+      oy + state.food.y * cellH + padY,
+      cellW - 2 * padX,
+      cellH - 2 * padY,
+      cellRef * 0.2,
     );
   }
 
   const snake = state.snake;
   ctx.save();
-  drawLightTrail(ctx, snake, ox, oy, cell);
+  drawLightTrail(ctx, snake, ox, oy, cellW, cellH);
   ctx.restore();
 
   const head = snake[0]!;
-  const hcx = ox + head.x * cell + cell / 2;
-  const hcy = oy + head.y * cell + cell / 2;
+  const hcx = ox + head.x * cellW + cellW / 2;
+  const hcy = oy + head.y * cellH + cellH / 2;
   const ang = dirToAngleRad(state.direction);
   if (assets?.head?.complete && assets.head.naturalWidth > 0) {
     ctx.save();
-    ctx.shadowBlur = cell * 0.22;
+    ctx.shadowBlur = cellRef * 0.22;
     ctx.shadowColor = 'rgba(255, 255, 255, 0.35)';
-    drawImageInCell(ctx, assets.head, hcx, hcy, cell, 1.3, ang);
+    drawImageInCell(ctx, assets.head, hcx, hcy, cellRef, 1.3, ang);
     ctx.restore();
   } else {
     ctx.save();
     ctx.translate(hcx, hcy);
     ctx.rotate(ang);
     ctx.fillStyle = 'rgba(243, 244, 246, 0.95)';
-    const s = cell * 0.95;
-    fillRoundRect(ctx, -s / 2, -s / 2, s, s, cell * 0.14);
+    const sx = cellW * 0.95;
+    const sy = cellH * 0.95;
+    fillRoundRect(ctx, -sx / 2, -sy / 2, sx, sy, cellRef * 0.14);
     ctx.restore();
   }
 }
@@ -320,15 +338,12 @@ export function SnakeGame() {
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    // 4) Taille canvas : cellule = min(largeur/hauteur disponibles) pour tenir dans la boîte sans scroll vertical.
-    //    Key: `cell` borne la grille ; `w`/`h` = dimensions exactes du dessin (drawGame centre si besoin).
-    // 3) Logic flow: ResizeObserver sur le conteneur à hauteur max fixée → pas de débordement.
+    // 4) Canvas = taille exacte du conteneur flex (pleine zone sous la barre d’actions, sans scroll).
+    //    Key: `w`/`h` = clientWidth/clientHeight ; drawGame étire la grille 40×25 sur tout le rectangle.
+    // 3) Logic flow: ResizeObserver → bounds identiques au viewport du jeu.
     const fit = () => {
-      const availW = el.clientWidth || 320;
-      const availH = el.clientHeight || 200;
-      const cell = Math.min(availW / GRID_WIDTH, availH / GRID_HEIGHT);
-      const w = cell * GRID_WIDTH;
-      const h = cell * GRID_HEIGHT;
+      const w = el.clientWidth || 320;
+      const h = el.clientHeight || 200;
       setBounds({ w, h });
     };
     const ro = new ResizeObserver(fit);
@@ -424,7 +439,7 @@ export function SnakeGame() {
   };
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-2" tabIndex={-1}>
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2" tabIndex={-1}>
       {/* 4) Barre d’action : Pause | Score | Meilleur | Nouvelle partie — pleine largeur du panneau central. */}
       <div className="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:flex-nowrap">
         <button
@@ -453,7 +468,7 @@ export function SnakeGame() {
 
       <div
         ref={wrapRef}
-        className="relative flex h-[min(48vh,400px)] min-h-[140px] w-full min-w-0 shrink-0 touch-none select-none items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.35)]"
+        className="relative flex min-h-0 flex-1 touch-none select-none items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.35)]"
         style={{ touchAction: 'none' }}
         onTouchStart={(ev) => {
           const t = ev.touches[0];
