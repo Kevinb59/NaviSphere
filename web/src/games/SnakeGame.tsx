@@ -320,10 +320,10 @@ export function SnakeGame() {
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
+    // 4) Taille canvas = grille 40×25 exacte : largeur du conteneur, hauteur dérivée (pas de bandes vides).
     const fit = () => {
       const w = el.clientWidth || 320;
-      // 4) Hauteur alignée sur le ratio 40×25 pour des cases carrées, sans écraser la grille.
-      const h = Math.min(520, Math.max(220, (w * GRID_HEIGHT) / GRID_WIDTH));
+      const h = (w * GRID_HEIGHT) / GRID_WIDTH;
       setBounds({ w, h });
     };
     const ro = new ResizeObserver(fit);
@@ -419,26 +419,36 @@ export function SnakeGame() {
   };
 
   return (
-    <div className="flex max-w-md flex-col gap-3" tabIndex={-1}>
-      <p className="text-xs text-white/50">
-        Glissez ou utilisez les flèches / WASD. Ramassez les éclairs — la traînée suit le serpent en lumière.
-        Espace pour pause.
-      </p>
-
-      <div className="flex gap-2">
-        <div className="flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-3 py-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">Score</p>
-          <p className="text-lg font-semibold tabular-nums text-white">{state.score}</p>
+    <div className="flex w-full min-w-0 flex-col gap-2" tabIndex={-1}>
+      {/* 4) Barre d’action : Pause | Score | Meilleur | Nouvelle partie — pleine largeur du panneau central. */}
+      <div className="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:flex-nowrap">
+        <button
+          type="button"
+          onClick={() => setState((s) => ({ ...s, paused: !s.paused }))}
+          className="shrink-0 rounded-[14px] border border-white/12 bg-white/[0.06] px-3 py-2.5 text-xs font-medium text-white transition hover:bg-white/[0.11] sm:px-4 sm:text-sm"
+        >
+          {state.paused ? 'Reprendre' : 'Pause'}
+        </button>
+        <div className="min-w-0 flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-3 sm:py-2.5">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px] sm:tracking-[0.2em]">Score</p>
+          <p className="text-base font-semibold tabular-nums text-white sm:text-lg">{state.score}</p>
         </div>
-        <div className="flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-3 py-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">Meilleur</p>
-          <p className="text-lg font-semibold tabular-nums text-sky-200/95">{best}</p>
+        <div className="min-w-0 flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-3 sm:py-2.5">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px] sm:tracking-[0.2em]">Meilleur</p>
+          <p className="text-base font-semibold tabular-nums text-sky-200/95 sm:text-lg">{best}</p>
         </div>
+        <button
+          type="button"
+          onClick={reset}
+          className="shrink-0 rounded-[14px] border border-white/12 bg-white/[0.06] px-3 py-2.5 text-xs font-medium text-white transition hover:bg-white/[0.11] sm:px-4 sm:text-sm"
+        >
+          Nouvelle partie
+        </button>
       </div>
 
       <div
         ref={wrapRef}
-        className="relative w-full touch-none select-none overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.35)]"
+        className="relative aspect-[40/25] w-full min-w-0 touch-none select-none overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.35)]"
         style={{ touchAction: 'none' }}
         onTouchStart={(ev) => {
           const t = ev.touches[0];
@@ -448,7 +458,7 @@ export function SnakeGame() {
       >
         <canvas
           ref={canvasRef}
-          className="block w-full max-h-[min(520px,85vh)]"
+          className="block h-full w-full"
           aria-label="Aire de jeu Snake Tesla"
         />
 
@@ -472,23 +482,6 @@ export function SnakeGame() {
             </button>
           </div>
         )}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setState((s) => ({ ...s, paused: !s.paused }))}
-          className="flex-1 rounded-[14px] border border-white/12 bg-white/[0.06] px-3 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.11]"
-        >
-          {state.paused ? 'Reprendre' : 'Pause'}
-        </button>
-        <button
-          type="button"
-          onClick={reset}
-          className="flex-1 rounded-[14px] border border-white/12 bg-white/[0.06] px-3 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.11]"
-        >
-          Nouvelle partie
-        </button>
       </div>
     </div>
   );
