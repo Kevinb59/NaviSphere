@@ -12,8 +12,8 @@ import {
 } from './gameSnakeLogic';
 
 const STORAGE_BEST = 'navisphere-snake-best';
-const URL_HEAD = '/assets/images/games/teslatop.png';
-const URL_FOOD = '/assets/images/games/applesnake.png';
+const URL_HEAD = '/assets/images/games/snake/teslatop.png';
+const URL_FOOD = '/assets/images/games/snake/applesnake.png';
 
 // 1) Purpose: aligner la vue de dessus Tesla (capot à droite dans le PNG) avec la direction de déplacement.
 // 2) Key variables: angles en radians, sens horaire canvas (y vers le bas).

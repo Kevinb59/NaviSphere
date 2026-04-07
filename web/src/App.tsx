@@ -25,6 +25,7 @@ import { FavoriteConfirmModal } from './components/FavoriteConfirmModal';
 import { ServiceCatalogTile } from './components/ServiceCatalogTile';
 import { SpaceXUpcomingLaunch } from './components/SpaceXUpcomingLaunch';
 import { Game2048 } from './games/Game2048';
+import { MemoryGame } from './games/MemoryGame';
 import { SnakeGame } from './games/SnakeGame';
 import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
@@ -123,6 +124,7 @@ const quickMenuItems = [
 const navisphereGames: { id: string; title: string; blurb: string }[] = [
   { id: '2048', title: '2048', blurb: 'Fusionnez les tuiles jusqu’à 2048.' },
   { id: 'snake', title: 'Snake', blurb: 'Mangez les pommes, évitez de vous croiser.' },
+  { id: 'memory', title: 'Memory', blurb: 'Retournez les cartes et retrouvez les paires.' },
 ];
 
 const musicServicesRaw = [
@@ -1480,7 +1482,7 @@ export default function TeslaFuturisticPortalConcept() {
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">
-                      {openGameId === '2048' || openGameId === 'snake'
+                      {openGameId === '2048' || openGameId === 'snake' || openGameId === 'memory'
                         ? 'Jeu'
                         : isSearchPanelOpen
                           ? 'Recherche'
@@ -1492,7 +1494,9 @@ export default function TeslaFuturisticPortalConcept() {
                           ? 'game-2048-title'
                           : openGameId === 'snake'
                             ? 'game-snake-title'
-                            : undefined
+                            : openGameId === 'memory'
+                              ? 'game-memory-title'
+                              : undefined
                       }
                       className="mt-1 text-lg font-medium text-white"
                     >
@@ -1500,21 +1504,23 @@ export default function TeslaFuturisticPortalConcept() {
                         ? '2048'
                         : openGameId === 'snake'
                           ? 'Snake'
-                          : isSearchPanelOpen
-                          ? 'Résultats'
-                          : activeCenterCategory === 'Musique'
-                            ? 'Services musicaux'
-                            : activeCenterCategory === 'Jeux'
-                              ? 'Services de jeux'
-                              : activeCenterCategory === 'Réseaux sociaux'
-                                ? 'Plateformes sociales'
-                                : activeCenterCategory === 'Communication'
-                                  ? 'Services de communication'
-                                  : activeCenterCategory === 'Navigation'
-                                    ? 'Services de navigation'
-                                    : activeCenterCategory === 'Recharge'
-                                      ? 'Services de recharge'
-                                : 'Services vidéo'}
+                          : openGameId === 'memory'
+                            ? 'Memory'
+                            : isSearchPanelOpen
+                              ? 'Résultats'
+                              : activeCenterCategory === 'Musique'
+                                ? 'Services musicaux'
+                                : activeCenterCategory === 'Jeux'
+                                  ? 'Services de jeux'
+                                  : activeCenterCategory === 'Réseaux sociaux'
+                                    ? 'Plateformes sociales'
+                                    : activeCenterCategory === 'Communication'
+                                      ? 'Services de communication'
+                                      : activeCenterCategory === 'Navigation'
+                                        ? 'Services de navigation'
+                                        : activeCenterCategory === 'Recharge'
+                                          ? 'Services de recharge'
+                                          : 'Services vidéo'}
                     </h3>
                   </div>
                   <button
@@ -1544,6 +1550,10 @@ export default function TeslaFuturisticPortalConcept() {
                 ) : openGameId === 'snake' ? (
                   <div className="relative flex h-[calc(100%-56px)] min-h-0 flex-col overflow-hidden pr-1">
                     <SnakeGame />
+                  </div>
+                ) : openGameId === 'memory' ? (
+                  <div className="relative flex h-[calc(100%-56px)] min-h-0 flex-col overflow-hidden pr-1">
+                    <MemoryGame />
                   </div>
                 ) : (
                   <div className="relative h-[calc(100%-56px)]">

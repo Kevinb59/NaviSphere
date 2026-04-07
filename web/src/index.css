@@ -535,3 +535,33 @@ a {
     filter: blur(0px);
   }
 }
+
+/* 1) Purpose:
+   - Animation de disparition des paires Memory (léger zoom arrière, flou, fondu).
+   2) Key variables: durée ~0,52 s, courbe ease-out pour un rendu « cockpit » discret.
+   3) Logic flow: classe `.memory-card-vanish` posée sur le conteneur 3D pendant la phase de retrait. */
+@keyframes navisphere-memory-vanish {
+  0% {
+    opacity: 1;
+    filter: blur(0) brightness(1.08);
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(5px) brightness(1.35);
+    transform: scale(0.86);
+  }
+}
+
+.memory-card-vanish {
+  animation: navisphere-memory-vanish 0.52s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  pointer-events: none;
+}
+
+/* 1) Purpose:
+   - Réserver l’emplacement grille quand une paire a disparu (évite le saut de mise en page).
+   2) Key variables: même `aspect-square` que les cartes actives.
+   3) Logic flow: div vide après `vanishedPairIds`. */
+.memory-card-slot {
+  min-height: 0;
+}
