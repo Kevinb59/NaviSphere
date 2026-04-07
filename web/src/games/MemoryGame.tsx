@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PAIR_COUNT = 16;
 const GRID_COLS = 8;
@@ -109,12 +109,37 @@ export function MemoryGame() {
   const [busy, setBusy] = useState(false);
   const [moves, setMoves] = useState(0);
   const [won, setWon] = useState(false);
+  const boardWrapRef = useRef<HTMLDivElement>(null);
+  const [boardBounds, setBoardBounds] = useState({ w: 320, h: 160 });
 
   const cardByUid = useMemo(() => {
     const m = new Map<string, CardModel>();
     deck.forEach((c) => m.set(c.uid, c));
     return m;
   }, [deck]);
+
+  useEffect(() => {
+    const el = boardWrapRef.current;
+    if (!el) return;
+
+    // 4) Purpose: dimensionner la grille Memory au maximum sans scroll dans la zone disponible.
+    //    Key variables: `availW`/`availH` (viewport local), `cell` (taille d'une case carrée), `w`/`h` (grille finale).
+    //    Logic flow: observer resize -> calcule `cell = min(availW/8, availH/4)` -> applique dimensions exactes.
+    const fitBoard = () => {
+      const availW = el.clientWidth || 320;
+      const availH = el.clientHeight || 160;
+      const cell = Math.min(availW / GRID_COLS, availH / GRID_ROWS);
+      setBoardBounds({
+        w: cell * GRID_COLS,
+        h: cell * GRID_ROWS,
+      });
+    };
+
+    const ro = new ResizeObserver(fitBoard);
+    ro.observe(el);
+    fitBoard();
+    return () => ro.disconnect();
+  }, []);
 
   const reset = useCallback(() => {
     setDeck(shuffleDeck());
@@ -200,33 +225,40 @@ export function MemoryGame() {
         </button>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-auto rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:p-3">
-        <div
-          className="mx-auto grid h-full w-full max-w-4xl gap-1.5 sm:gap-2"
-          style={{
-            gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
-            gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))`,
-          }}
-        >
-          {deck.map((card) => {
-            const gone = vanishedPairIds.has(card.pairId);
-            const showFace =
-              revealed.includes(card.uid) || (matchedPairIds.has(card.pairId) && !gone);
-            const vanishing = vanishingPairIds.has(card.pairId);
-            const disabled = busy || gone || revealed.includes(card.uid);
+      <div
+        ref={boardWrapRef}
+        className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:p-3"
+      >
+        <div className="flex h-full w-full items-center justify-center">
+          <div
+            className="grid gap-1.5 sm:gap-2"
+            style={{
+              width: boardBounds.w,
+              height: boardBounds.h,
+              gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))`,
+            }}
+          >
+            {deck.map((card) => {
+              const gone = vanishedPairIds.has(card.pairId);
+              const showFace =
+                revealed.includes(card.uid) || (matchedPairIds.has(card.pairId) && !gone);
+              const vanishing = vanishingPairIds.has(card.pairId);
+              const disabled = busy || gone || revealed.includes(card.uid);
 
-            return (
-              <MemoryCard
-                key={card.uid}
-                pairId={card.pairId}
-                showFace={showFace}
-                vanishing={vanishing}
-                gone={gone}
-                disabled={disabled}
-                onFlip={() => onCardClick(card.uid)}
-              />
-            );
-          })}
+              return (
+                <MemoryCard
+                  key={card.uid}
+                  pairId={card.pairId}
+                  showFace={showFace}
+                  vanishing={vanishing}
+                  gone={gone}
+                  disabled={disabled}
+                  onFlip={() => onCardClick(card.uid)}
+                />
+              );
+            })}
+          </div>
         </div>
 
         {won && (
