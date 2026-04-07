@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 
-const PAIR_COUNT = 15;
-const GRID_COLS = 6;
-const GRID_ROWS = 5;
+const PAIR_COUNT = 16;
+const GRID_COLS = 8;
+const GRID_ROWS = 4;
 const BACK_SRC = '/assets/images/games/memory/back.jpg';
 
-// 1) Purpose: URL publique de la face numéro `n` (1…15), même dossier que le dos.
+// 1) Purpose: URL publique de la face numéro `n` (1…16), même dossier que le dos.
 // 2) Key variables: extension `.jpg` alignée sur les assets du dépôt.
 // 3) Logic flow: utilisé dans `img` pour chaque paire identique.
 function faceSrc(n: number): string {
@@ -17,7 +17,7 @@ type CardModel = {
   pairId: number;
 };
 
-// 1) Purpose: mélanger aléatoirement les 30 cartes (15 paires) pour la grille 5×6.
+// 1) Purpose: mélanger aléatoirement les 32 cartes (16 paires) pour la grille 4×8.
 // 2) Key variables: copie du tableau puis échanges Fisher–Yates.
 // 3) Logic flow: indice décroissant, swap avec j aléatoire ∈ [0, i].
 function shuffleDeck(): CardModel[] {
@@ -97,9 +97,9 @@ function MemoryCard({
   );
 }
 
-// 1) Purpose: jeu Memory 15 paires sur grille 5×6 — retournement au clic, paires identiques retirées du tapis.
+// 1) Purpose: jeu Memory 16 paires sur grille 4×8 — retournement au clic, paires identiques retirées du tapis.
 // 2) Key variables: `deck` ordre fixe après mélange ; `revealed` jusqu’à 2 `uid` ; `matched` / `vanished` par `pairId` ; `busy` bloque les clics entre deux révélations.
-// 3) Logic flow: 2e carte → comparaison → timeout match (disparition) ou mismatch (retour dos) ; victoire si 15 paires disparues.
+// 3) Logic flow: 2e carte → comparaison → timeout match (disparition) ou mismatch (retour dos) ; victoire si 16 paires disparues.
 export function MemoryGame() {
   const [deck, setDeck] = useState<CardModel[]>(() => shuffleDeck());
   const [revealed, setRevealed] = useState<string[]>([]);
