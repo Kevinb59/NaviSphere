@@ -36,6 +36,7 @@ import { Game2048 } from './games/Game2048';
 import { MemoryGame } from './games/MemoryGame';
 import { SnakeGame } from './games/SnakeGame';
 import { TicTacToeGame } from './games/TicTacToeGame';
+import { ConnectFourGame } from './games/ConnectFourGame';
 import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
 // 1) Purpose:
@@ -135,6 +136,11 @@ const navisphereGames: { id: string; title: string; blurb: string }[] = [
   { id: 'snake', title: 'Snake', blurb: 'Mangez les pommes, évitez de vous croiser.' },
   { id: 'memory', title: 'Memory', blurb: 'Retournez les cartes et retrouvez les paires.' },
   { id: 'morpion', title: 'Morpion', blurb: 'Alignez trois symboles — à deux ou contre la Tesla.' },
+  {
+    id: 'puissance4',
+    title: 'Puissance 4',
+    blurb: 'Alignez quatre jetons — à deux ou contre la Tesla, avec chute animée.',
+  },
 ];
 
 const musicServicesRaw = [
@@ -1558,6 +1564,17 @@ export default function TeslaFuturisticPortalConcept() {
                       Morpion
                     </span>
                     <TicTacToeGame />
+                  </div>
+                ) : openGameId === 'puissance4' ? (
+                  <div
+                    className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 pt-10 pb-4"
+                    role="region"
+                    aria-labelledby="game-puissance4-title"
+                  >
+                    <span id="game-puissance4-title" className="sr-only">
+                      Puissance 4
+                    </span>
+                    <ConnectFourGame />
                   </div>
                 ) : (
                   <div className="relative h-[calc(100%-56px)]">
