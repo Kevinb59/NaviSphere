@@ -35,6 +35,7 @@ import { ViewportDebugOverlay } from './components/ViewportDebugOverlay';
 import { Game2048 } from './games/Game2048';
 import { MemoryGame } from './games/MemoryGame';
 import { SnakeGame } from './games/SnakeGame';
+import { TicTacToeGame } from './games/TicTacToeGame';
 import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
 // 1) Purpose:
@@ -133,6 +134,7 @@ const navisphereGames: { id: string; title: string; blurb: string }[] = [
   { id: '2048', title: '2048', blurb: 'Fusionnez les tuiles jusqu’à 2048.' },
   { id: 'snake', title: 'Snake', blurb: 'Mangez les pommes, évitez de vous croiser.' },
   { id: 'memory', title: 'Memory', blurb: 'Retournez les cartes et retrouvez les paires.' },
+  { id: 'morpion', title: 'Morpion', blurb: 'Alignez trois symboles — à deux ou contre la Tesla.' },
 ];
 
 const musicServicesRaw = [
@@ -1545,6 +1547,17 @@ export default function TeslaFuturisticPortalConcept() {
                       Memory
                     </span>
                     <MemoryGame />
+                  </div>
+                ) : openGameId === 'morpion' ? (
+                  <div
+                    className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 pt-10 pb-4"
+                    role="region"
+                    aria-labelledby="game-morpion-title"
+                  >
+                    <span id="game-morpion-title" className="sr-only">
+                      Morpion
+                    </span>
+                    <TicTacToeGame />
                   </div>
                 ) : (
                   <div className="relative h-[calc(100%-56px)]">
