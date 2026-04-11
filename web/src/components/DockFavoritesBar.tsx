@@ -27,9 +27,9 @@ import { useLongPress } from '../hooks/useLongPress';
 export type CatalogTile = { name: string; domain: string; href: string; icon: LucideIcon };
 
 // 1) Purpose:
-// - Tuile dock : `favoriteKey` = chaîne exacte stockée en Sheet / `favoriteOrder` (API remove / setFavorites).
-// 2) Key variables: `name` = libellé affiché (catalogue) ; `favoriteKey` = identifiant stable pour DnD + GAS.
-// 3) Logic flow: ne jamais envoyer `name` au backend si le Sheet contient une autre graphie (casse, etc.).
+// - Tuile dock : `favoriteKey` = id catalogue stocké dans `favoriteOrder` / Firestore (`favoriteIds`).
+// 2) Key variables: `name` = libellé affiché (catalogue) ; `favoriteKey` = identifiant stable pour DnD + suppression.
+// 3) Logic flow: le parent persiste la liste d’ids via `commitFavorites` après « Terminé ».
 export type DockFavoriteTile = CatalogTile & { favoriteKey: string };
 
 type SortableDockTileProps = {
@@ -156,9 +156,9 @@ export function DockFavoritesBar({
   );
 
   // 1) Purpose:
-  // - Réordonner `favoriteOrder` côté parent via les clés Sheet (pas les libellés catalogue).
+  // - Réordonner `favoriteOrder` côté parent via les ids favoris (pas les libellés catalogue).
   // 2) Key variables: `active.id` / `over.id` = `favoriteKey` dnd-kit.
-  // 3) Logic flow: `arrayMove` sur la liste des clés → `onReorder` → `setFavorites` GAS.
+  // 3) Logic flow: `arrayMove` sur la liste des clés → `onReorder` → brouillon puis `commitFavorites` au « Terminé ».
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;

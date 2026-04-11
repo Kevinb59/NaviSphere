@@ -17,9 +17,16 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { formatGasAuthMessage, gasLogin, gasRegister, gasSetFavorites, isGasConfigured } from './api/gasClient';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
 import { splitCatalogByBlockLengths, withUniqueIds } from './catalog/serviceIds';
-import { loadLocalFavorites, saveLocalFavorites } from './auth/localFavorites';
+import { formatFirebaseAuthError } from './firebase/authErrors';
+import { getFirebaseAuth, isFirebaseConfigured } from './firebase/client';
+import { loadDockFavoriteIds, saveDockFavoriteIds } from './firebase/dockFavorites';
 import { DockFavoritesBar } from './components/DockFavoritesBar';
 import { FavoriteConfirmModal } from './components/FavoriteConfirmModal';
 import { ServiceCatalogTile } from './components/ServiceCatalogTile';
@@ -198,7 +205,7 @@ const chargingServicesRaw = [
 ];
 
 // 1) Purpose:
-// - Fusionner tous les blocs puis attribuer des `id` uniques (slugs) pour le stockage Sheet C–Z.
+// - Fusionner tous les blocs puis attribuer des `id` uniques (slugs) pour le stockage Firestore des favoris.
 // 2) Key variables: longueurs de blocs alignées sur l’ordre de concaténation.
 // 3) Logic flow: `withUniqueIds` sur le plat → `splitCatalogByBlockLengths` reconstitue dock, musique, etc.
 const CATALOG_BLOCK_LENGTHS = [
@@ -231,13 +238,13 @@ const [
 const ALL_CATALOG_SERVICES = ALL_CATALOG_FLAT;
 
 // 1) Purpose:
-// - Accès O(1) au service par identifiant stocké dans une cellule App*.
+// - Accès O(1) au service par identifiant stocké côté favoris (slug Firestore).
 // 2) Key variables: clé = `id` (slug) ; valeur = entrée catalogue complète.
 // 3) Logic flow: construit une seule fois au chargement du module.
 const ALL_CATALOG_BY_ID = new Map(ALL_CATALOG_SERVICES.map((s) => [s.id, s]));
 
 // 1) Purpose:
-// - Convertir une cellule Sheet (slug, ancien libellé, casse différente) en id canonique pour l’état React.
+// - Convertir une valeur stockée (slug, ancien libellé, casse différente) en id canonique pour l’état React.
 // 2) Key variables: `raw` = texte brut d’une colonne App* ; retour null si vide.
 // 3) Logic flow: id connu → nom exact → nom insensible à la casse → sinon conserver la chaîne (orphelin).
 function normalizeFavoriteSlot(raw: string): string | null {
@@ -253,9 +260,19 @@ function normalizeFavoriteSlot(raw: string): string | null {
 }
 
 // 1) Purpose:
-// - Produit la liste d’ids favoris (max 24, sans doublon, ordre conservé) après login ou lecture locale.
-// 2) Key variables: `cells` = tableau brut renvoyé par GAS ou localStorage.
-// 3) Logic flow: pour chaque cellule, `normalizeFavoriteSlot` ; ignore les doublons successifs.
+// - Produit la liste d’ids favoris (max 24, sans doublon, ordre conservé) après chargement Firestore.
+// 2) Key variables: `cells` = tableau brut (ids / libellés issus du document `favoriteIds`).
+// 3) Logic flow: pour chaque entrée, `normalizeFavoriteSlot` ; ignore les doublons successifs.
+// 1) Purpose:
+// - Représenter l’utilisateur connecté (Firebase Auth) pour la salutation et les garde-fous UI.
+// 2) Key variables: `email` affiché ; l’`uid` reste dans `auth.currentUser` pour Firestore.
+// 3) Logic flow: rempli par `onAuthStateChanged`, vidé à la déconnexion.
+type SessionUser = { email: string };
+
+function sessionDisplayName(session: SessionUser): string {
+  return session.email;
+}
+
 function normalizeFavoritesFromSheet(cells: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
@@ -270,7 +287,7 @@ function normalizeFavoritesFromSheet(cells: string[]): string[] {
 }
 
 // 1) Purpose:
-// - Résoudre une clé dock (id Sheet ou ancien nom) vers métadonnées catalogue pour l’affichage.
+// - Résoudre une clé dock (id favori ou ancien nom) vers métadonnées catalogue pour l’affichage.
 // 2) Key variables: `favoriteKey` = id stocké ou chaîne héritée.
 // 3) Logic flow: Map par id → égalité sur `name` → casse insensible.
 function resolveCatalogEntryForFavoriteKey(favoriteKey: string) {
@@ -342,33 +359,31 @@ export default function TeslaFuturisticPortalConcept() {
   // - Gérer l'affichage des encarts Connexion / Inscription et leurs champs locaux.
   // 2) Key variables:
   // - `authModal`: `'login'` (connexion), `'register'` (inscription) ou `null` (fermé).
-  // - `loginAlias` / `loginPassword`: saisie du formulaire de connexion.
-  // - `registerAlias` / `registerPassword` / `registerPasswordConfirm`: saisie inscription.
+  // - `loginEmail` / `loginPassword`: connexion Firebase (e-mail + mot de passe).
+  // - `registerEmail` / `registerPassword` / `registerPasswordConfirm`: idem pour l’inscription.
   // - `registerPasswordMismatch`: message si les deux mots de passe ne coïncident pas.
   // 3) Logic flow:
   // - Les boutons d'en-tête ouvrent le bon encart; fermeture = reset des champs pour ne rien laisser en mémoire côté UI.
   const [authModal, setAuthModal] = useState<'login' | 'register' | null>(null);
-  const [loginAlias, setLoginAlias] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [registerAlias, setRegisterAlias] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerPasswordConfirm, setRegisterPasswordConfirm] = useState('');
   const [registerPasswordMismatch, setRegisterPasswordMismatch] = useState(false);
   const [authFormError, setAuthFormError] = useState('');
 
   // 1) Purpose:
-  // - Session applicative : identifiants pour GAS / localStorage et ordre des favoris (ids slugs en colonnes C–Z).
+  // - Session Firebase : e-mail affiché + ordre des favoris (ids slugs, Firestore).
   // 2) Key variables:
-  // - `sessionCredentials`: alias + mot de passe (MVP; à remplacer par token sécurisé plus tard).
-  // - `favoriteOrder`: ids favoris validés (Sheet / dernier commit).
+  // - `sessionUser`: e-mail affiché quand Firebase Auth a une session active.
+  // - `favoriteOrder`: ids favoris validés (Firestore / dernier commit dock).
   // - `dockDraftIds`: copie locale en mode édition (suppressions / ordre) jusqu’au clic « Terminé ».
   // - `dockEditMode`: édition (croix + glisser-déposer).
   // - `favoritePendingServiceId`: id catalogue du service en attente de confirmation d’ajout.
   // 3) Logic flow:
-  // - Connexion / inscription remplissent `sessionCredentials` et `favoriteOrder`; persistance via GAS ou local.
-  const [sessionCredentials, setSessionCredentials] = useState<{ alias: string; password: string } | null>(
-    null,
-  );
+  // - Connexion / inscription via Firebase ; favoris lus/écrits dans Firestore.
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [favoriteOrder, setFavoriteOrder] = useState<string[]>([]);
   const [dockDraftIds, setDockDraftIds] = useState<string[] | null>(null);
   const [dockEditMode, setDockEditMode] = useState(false);
@@ -384,19 +399,20 @@ export default function TeslaFuturisticPortalConcept() {
   const [navisphereGamesModalOpen, setNavisphereGamesModalOpen] = useState(false);
   const [dockBannerMessage, setDockBannerMessage] = useState('');
 
-  const isLoggedIn = sessionCredentials !== null;
+  const isLoggedIn = sessionUser !== null;
+  const firebaseReady = isFirebaseConfigured();
 
   // 1) Purpose:
-  // - Fermer les encarts d'authentification et effacer toute saisie locale (alias / mots de passe).
+  // - Fermer les encarts d'authentification et effacer toute saisie locale (e-mail / mots de passe).
   // 2) Key variables:
   // - Aucun état dérivé: uniquement des réinitialisations via les setters React.
   // 3) Logic flow:
   // - On remet `authModal` à `null`, puis on vide chaque champ et l'indicateur d'erreur d'inscription.
   const closeAuthModal = useCallback(() => {
     setAuthModal(null);
-    setLoginAlias('');
+    setLoginEmail('');
     setLoginPassword('');
-    setRegisterAlias('');
+    setRegisterEmail('');
     setRegisterPassword('');
     setRegisterPasswordConfirm('');
     setRegisterPasswordMismatch(false);
@@ -410,9 +426,9 @@ export default function TeslaFuturisticPortalConcept() {
   // 3) Logic flow:
   // - On réinitialise tous les champs puis on affiche l'encart demandé (évite de garder une saisie précédente).
   const openAuthModal = useCallback((mode: 'login' | 'register') => {
-    setLoginAlias('');
+    setLoginEmail('');
     setLoginPassword('');
-    setRegisterAlias('');
+    setRegisterEmail('');
     setRegisterPassword('');
     setRegisterPasswordConfirm('');
     setRegisterPasswordMismatch(false);
@@ -421,51 +437,32 @@ export default function TeslaFuturisticPortalConcept() {
   }, []);
 
   // 1) Purpose:
-  // - Restaurer une session stockée (sessionStorage) au chargement : GAS ou favoris locaux.
-  // 2) Key variables:
-  // - `navisphere_alias` / `navisphere_mdp`: clés de session (alignées sur le script GAS).
+  // - Synchroniser l’état React avec Firebase Auth (persistance navigateur) et charger les favoris Firestore.
+  // 2) Key variables: `onAuthStateChanged` → `user.uid` pour `loadDockFavoriteIds`.
   // 3) Logic flow:
-  // - Si GAS configuré, `login` recharge les favoris; sinon on lit localStorage par alias.
+  // - Utilisateur présent → `sessionUser` + liste normalisée ; déconnexion → reset dock.
   useEffect(() => {
-    const alias = sessionStorage.getItem('navisphere_alias');
-    const mdp = sessionStorage.getItem('navisphere_mdp');
-    if (!alias || !mdp) return;
-    if (isGasConfigured()) {
-      void gasLogin({ alias, password: mdp })
-        .then((res) => {
-          if (res.ok) {
-            setSessionCredentials({ alias, password: mdp });
-            // 1) Purpose:
-            // - Si le Sheet est vide côté GAS mais que le navigateur a encore des favoris locaux (échec intermittent du proxy), afficher les locaux.
-            // 2) Key variables: `res.favorites` (serveur) vs `loadLocalFavorites(alias)`.
-            // 3) Logic flow: priorité au serveur s’il a des entrées ; sinon repli localStorage.
-            const fromServer = res.favorites;
-            const raw =
-              fromServer && fromServer.length > 0 ? fromServer : loadLocalFavorites(alias);
-            setFavoriteOrder(normalizeFavoritesFromSheet(raw));
-          } else {
-            sessionStorage.removeItem('navisphere_alias');
-            sessionStorage.removeItem('navisphere_mdp');
-          }
-        })
-        .catch(() => {
-          // 1) Purpose:
-          // - Réseau / HTML au lieu de JSON : garder la session et les favoris locaux pour continuer à utiliser l’app.
-          // 2) Key variables: `alias` / `mdp` depuis sessionStorage (déjà validés).
-          // 3) Logic flow: session restaurée + favoris locaux uniquement jusqu’à ce que GAS réponde à nouveau.
-          setSessionCredentials({ alias, password: mdp });
-          setFavoriteOrder(normalizeFavoritesFromSheet(loadLocalFavorites(alias)));
+    if (!isFirebaseConfigured()) return;
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        startTransition(() => {
+          setSessionUser(null);
+          setFavoriteOrder([]);
         });
-    } else {
-      // 1) Purpose:
-      // - Éviter `setState` synchrone direct dans le corps d’effet (règle ESLint react-hooks/set-state-in-effect).
-      // 2) Key variables: même restauration que la connexion manuelle sans GAS.
-      // 3) Logic flow: `startTransition` reporte la mise à jour sans cascade de rendu critique.
-      startTransition(() => {
-        setSessionCredentials({ alias, password: mdp });
-        setFavoriteOrder(normalizeFavoritesFromSheet(loadLocalFavorites(alias)));
+        return;
+      }
+      void loadDockFavoriteIds(user.uid).then((ids) => {
+        startTransition(() => {
+          setSessionUser({
+            email: user.email ?? user.uid,
+          });
+          setFavoriteOrder(normalizeFavoritesFromSheet(ids));
+        });
       });
-    }
+    });
+    return () => unsubscribe();
   }, []);
 
   // 1) Purpose:
@@ -627,7 +624,7 @@ export default function TeslaFuturisticPortalConcept() {
 
   // 1) Purpose:
   // - Dock : tuiles à partir du brouillon en édition ou des favoris commités.
-  // 2) Key variables: `favoriteKey` = id Sheet (slug) pour DnD / suppression locale.
+  // 2) Key variables: `favoriteKey` = id catalogue (slug) pour DnD / suppression locale.
   // 3) Logic flow: résolution catalogue par id ou ancien nom ; repli visuel si orphelin.
   const favoriteDockApps = useMemo(() => {
     const ids = dockEditMode && dockDraftIds !== null ? dockDraftIds : favoriteOrder;
@@ -828,91 +825,62 @@ export default function TeslaFuturisticPortalConcept() {
   };
 
   // 1) Purpose:
-  // - Écrire d’un coup les colonnes C–Z (24 ids) via `setFavorites` ; met à jour l’état seulement après succès.
-  // 2) Key variables: `ids` = ordre utilisateur (déjà des slugs après normalisation d’entrée).
-  // 3) Logic flow: compactage + dédup → POST GAS → `normalizeFavoritesFromSheet` sur la réponse ; repli local si échec.
+  // - Persister tout l’ordre du dock (max 24 ids) dans Firestore pour l’utilisateur courant.
+  // 2) Key variables: `ids` = ordre utilisateur (slugs après `normalizeFavoritesFromSheet`).
+  // 3) Logic flow: compactage + dédup → `saveDockFavoriteIds` → mise à jour d’état locale si succès.
   const commitFavorites = useCallback(
     async (ids: string[]): Promise<boolean> => {
-      if (!sessionCredentials) return false;
+      if (!sessionUser) return false;
       const compact = normalizeFavoritesFromSheet(ids);
       setDockBannerMessage('');
-      if (!isGasConfigured()) {
-        setFavoriteOrder(compact);
-        saveLocalFavorites(sessionCredentials.alias, compact);
-        return true;
+      const auth = getFirebaseAuth();
+      const user = auth?.currentUser;
+      if (!user) {
+        setDockBannerMessage('Session expirée : reconnectez-vous pour sauvegarder le dock.');
+        return false;
       }
       try {
-        const res = await gasSetFavorites({
-          alias: sessionCredentials.alias,
-          password: sessionCredentials.password,
-          favorites: compact,
-        });
-        if (!res.ok) {
-          saveLocalFavorites(sessionCredentials.alias, compact);
-          setDockBannerMessage(
-            'Sauvegarde serveur impossible : favoris enregistrés localement sur cet appareil.',
-          );
-          return false;
-        }
-        const normalized = normalizeFavoritesFromSheet(res.favorites);
-        setFavoriteOrder(normalized);
-        saveLocalFavorites(sessionCredentials.alias, normalized);
+        await saveDockFavoriteIds(user.uid, compact);
+        setFavoriteOrder(compact);
         return true;
       } catch (err) {
-        saveLocalFavorites(sessionCredentials.alias, compact);
         setDockBannerMessage(
-          err instanceof Error ? err.message : 'Erreur réseau : favoris enregistrés localement.',
+          err instanceof Error ? err.message : 'Erreur Firestore : impossible de sauvegarder le dock.',
         );
         return false;
       }
     },
-    [sessionCredentials],
+    [sessionUser],
   );
 
   // 1) Purpose:
-  // - Soumettre le formulaire de connexion vers GAS ou mode local (développement sans URL).
-  // 2) Key variables:
-  // - `loginAlias`, `loginPassword`: identifiants alignés sur les colonnes Alias / MDP.
-  // 3) Logic flow:
-  // - Succès → session + favoris; échec → message dans `authFormError`.
+  // - Soumettre le formulaire de connexion Firebase (e-mail + mot de passe).
+  // 2) Key variables: `loginEmail`, `loginPassword` ; `onAuthStateChanged` charge les favoris après succès.
+  // 3) Logic flow: erreur config → message ; sinon `signInWithEmailAndPassword` puis fermeture modale.
   const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAuthFormError('');
+    if (!isFirebaseConfigured()) {
+      setAuthFormError('Configuration manquante : renseignez les variables VITE_FIREBASE_* (voir web/.env.example).');
+      return;
+    }
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      setAuthFormError('Firebase n’a pas pu être initialisé.');
+      return;
+    }
     try {
-      if (isGasConfigured()) {
-        const res = await gasLogin({ alias: loginAlias.trim(), password: loginPassword });
-        if (!res.ok) {
-          setAuthFormError(formatGasAuthMessage(res.error, 'login'));
-          return;
-        }
-        sessionStorage.setItem('navisphere_alias', loginAlias.trim());
-        sessionStorage.setItem('navisphere_mdp', loginPassword);
-        setSessionCredentials({ alias: loginAlias.trim(), password: loginPassword });
-        const fromServer = res.favorites;
-        const raw =
-          fromServer && fromServer.length > 0
-            ? fromServer
-            : loadLocalFavorites(loginAlias.trim());
-        setFavoriteOrder(normalizeFavoritesFromSheet(raw));
-        closeAuthModal();
-        return;
-      }
-      sessionStorage.setItem('navisphere_alias', loginAlias.trim());
-      sessionStorage.setItem('navisphere_mdp', loginPassword);
-      setSessionCredentials({ alias: loginAlias.trim(), password: loginPassword });
-      setFavoriteOrder(normalizeFavoritesFromSheet(loadLocalFavorites(loginAlias.trim())));
+      await signInWithEmailAndPassword(auth, loginEmail.trim(), loginPassword);
       closeAuthModal();
     } catch (err) {
-      setAuthFormError(err instanceof Error ? err.message : 'Erreur réseau.');
+      setAuthFormError(formatFirebaseAuthError(err));
     }
   };
 
   // 1) Purpose:
-  // - Créer un compte (ligne Sheet) ou compte local si GAS absent.
-  // 2) Key variables:
-  // - Même schéma que la feuille : alias unique, MDP, favoris vides au départ.
-  // 3) Logic flow:
-  // - Validation mot de passe puis `register` GAS ou session locale.
+  // - Créer un compte Firebase (e-mail + mot de passe) et initialiser un dock vide dans Firestore.
+  // 2) Key variables: `registerEmail`, `registerPassword` ; document `users/{uid}/settings/dock`.
+  // 3) Logic flow: validation des mots de passe → `createUserWithEmailAndPassword` → `saveDockFavoriteIds([], ...)`.
   const handleRegisterSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAuthFormError('');
@@ -921,28 +889,21 @@ export default function TeslaFuturisticPortalConcept() {
       return;
     }
     setRegisterPasswordMismatch(false);
+    if (!isFirebaseConfigured()) {
+      setAuthFormError('Configuration manquante : renseignez les variables VITE_FIREBASE_* (voir web/.env.example).');
+      return;
+    }
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      setAuthFormError('Firebase n’a pas pu être initialisé.');
+      return;
+    }
     try {
-      if (isGasConfigured()) {
-        const res = await gasRegister({ alias: registerAlias.trim(), password: registerPassword });
-        if (!res.ok) {
-          setAuthFormError(formatGasAuthMessage(res.error, 'register'));
-          return;
-        }
-        sessionStorage.setItem('navisphere_alias', registerAlias.trim());
-        sessionStorage.setItem('navisphere_mdp', registerPassword);
-        setSessionCredentials({ alias: registerAlias.trim(), password: registerPassword });
-        setFavoriteOrder([]);
-        closeAuthModal();
-        return;
-      }
-      sessionStorage.setItem('navisphere_alias', registerAlias.trim());
-      sessionStorage.setItem('navisphere_mdp', registerPassword);
-      setSessionCredentials({ alias: registerAlias.trim(), password: registerPassword });
-      setFavoriteOrder([]);
-      saveLocalFavorites(registerAlias.trim(), []);
+      const cred = await createUserWithEmailAndPassword(auth, registerEmail.trim(), registerPassword);
+      await saveDockFavoriteIds(cred.user.uid, []);
       closeAuthModal();
     } catch (err) {
-      setAuthFormError(err instanceof Error ? err.message : 'Erreur réseau.');
+      setAuthFormError(formatFirebaseAuthError(err));
     }
   };
 
@@ -954,7 +915,7 @@ export default function TeslaFuturisticPortalConcept() {
   // - Contrôle doublon, plafond 24, puis `setFavoritePendingServiceId` pour le modal.
   const handleLongPressFavoriteIntent = useCallback(
     (serviceId: string) => {
-      if (!sessionCredentials) {
+      if (!sessionUser) {
         setAuthModal('login');
         return;
       }
@@ -969,7 +930,7 @@ export default function TeslaFuturisticPortalConcept() {
       }
       setFavoritePendingServiceId(serviceId);
     },
-    [dockDraftIds, dockEditMode, favoriteOrder, sessionCredentials],
+    [dockDraftIds, dockEditMode, favoriteOrder, sessionUser],
   );
 
   // 1) Purpose:
@@ -977,7 +938,7 @@ export default function TeslaFuturisticPortalConcept() {
   // 2) Key variables: `favoritePendingServiceId` = slug catalogue à ajouter.
   // 3) Logic flow: brouillon `dockDraftIds` ou `commitFavorites([...favoriteOrder, id])`.
   const confirmFavoriteAdd = useCallback(async () => {
-    if (!favoritePendingServiceId || !sessionCredentials) return;
+    if (!favoritePendingServiceId || !sessionUser) return;
     const id = favoritePendingServiceId;
     setFavoritePendingServiceId(null);
     if (dockEditMode && dockDraftIds !== null) {
@@ -1002,7 +963,7 @@ export default function TeslaFuturisticPortalConcept() {
       return;
     }
     await commitFavorites([...favoriteOrder, id]);
-  }, [commitFavorites, dockDraftIds, dockEditMode, favoriteOrder, favoritePendingServiceId, sessionCredentials]);
+  }, [commitFavorites, dockDraftIds, dockEditMode, favoriteOrder, favoritePendingServiceId, sessionUser]);
 
   // 1) Purpose:
   // - Retirer un favori en mode édition : uniquement le brouillon local (sync au « Terminé »).
@@ -1034,7 +995,7 @@ export default function TeslaFuturisticPortalConcept() {
   // 2) Key variables: `dockDraftIds` = liste éditée ; repli sur `favoriteOrder` si brouillon absent.
   // 3) Logic flow: `commitFavorites` ; en cas d’échec, on reste en édition pour réessayer.
   const handleDockEditDone = useCallback(async () => {
-    if (!sessionCredentials) {
+    if (!sessionUser) {
       setDockEditMode(false);
       setDockDraftIds(null);
       return;
@@ -1045,18 +1006,16 @@ export default function TeslaFuturisticPortalConcept() {
       setDockEditMode(false);
       setDockDraftIds(null);
     }
-  }, [commitFavorites, dockDraftIds, favoriteOrder, sessionCredentials]);
+  }, [commitFavorites, dockDraftIds, favoriteOrder, sessionUser]);
 
   // 1) Purpose:
-  // - Terminer la session locale (sessionStorage) et réinitialiser l’état UI (dock, modals).
-  // 2) Key variables:
-  // - `navisphere_alias` / `navisphere_mdp`: clés effacées côté navigateur.
-  // 3) Logic flow:
-  // - Suppression du stockage, reset des états, fermeture des formulaires d’auth.
+  // - Terminer la session Firebase et réinitialiser l’état UI (dock, modals).
+  // 2) Key variables: `signOut` sur `getFirebaseAuth()` si disponible.
+  // 3) Logic flow: déconnexion Auth → reset états locaux → fermeture des encarts.
   const handleLogout = useCallback(() => {
-    sessionStorage.removeItem('navisphere_alias');
-    sessionStorage.removeItem('navisphere_mdp');
-    setSessionCredentials(null);
+    const auth = getFirebaseAuth();
+    if (auth) void signOut(auth);
+    setSessionUser(null);
     setFavoriteOrder([]);
     setDockEditMode(false);
     setDockDraftIds(null);
@@ -1085,16 +1044,16 @@ export default function TeslaFuturisticPortalConcept() {
               {/* 1) Purpose:
                   - Afficher connexion / inscription ou salutation + aide / déconnexion selon l’état session.
                   2) Key variables:
-                  - `sessionCredentials.alias`: texte « Bonjour, … ».
+                  - `sessionDisplayName(sessionUser)`: e-mail affiché depuis Firebase Auth.
                   3) Logic flow:
                   - Si connecté : ligne avec salutation tronquée et deux boutons icônes; sinon capsules Connexion / Inscription. */}
-              {isLoggedIn && sessionCredentials ? (
+              {isLoggedIn && sessionUser ? (
                 <div className="mt-2 flex items-center gap-2">
                   <p
                     className="min-w-0 flex-1 truncate rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/85 ring-1 ring-white/10 backdrop-blur-xl"
-                    title={sessionCredentials.alias}
+                    title={sessionDisplayName(sessionUser)}
                   >
-                    Bonjour, {sessionCredentials.alias}
+                    Bonjour, {sessionDisplayName(sessionUser)}
                   </p>
                   <button
                     type="button"
@@ -1118,18 +1077,28 @@ export default function TeslaFuturisticPortalConcept() {
                   <button
                     type="button"
                     onClick={() => openAuthModal('login')}
-                    className="flex-1 rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/80 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12]"
+                    disabled={!firebaseReady}
+                    className="flex-1 rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/80 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Connexion
                   </button>
                   <button
                     type="button"
                     onClick={() => openAuthModal('register')}
-                    className="flex-1 rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/80 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12]"
+                    disabled={!firebaseReady}
+                    className="flex-1 rounded-full bg-black/25 px-3 py-2 text-xs font-medium text-white/80 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Inscription
                   </button>
                 </div>
+              )}
+              {!firebaseReady && (
+                <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-[11px] leading-snug text-amber-100/90 ring-1 ring-amber-400/20">
+                  Firebase non configuré : copiez <span className="font-mono text-[10px]">web/.env.example</span> vers{' '}
+                  <span className="font-mono text-[10px]">.env.local</span> et renseignez les variables{' '}
+                  <span className="font-mono text-[10px]">VITE_FIREBASE_*</span>, puis relancez{' '}
+                  <span className="font-mono text-[10px]">npm run dev</span>.
+                </p>
               )}
             </div>
 
@@ -1741,11 +1710,11 @@ export default function TeslaFuturisticPortalConcept() {
                     Connexion
                   </h2>
                   {/* 1) Purpose:
-                      - Collecter alias + mot de passe pour une future authentification.
+                      - Collecter e-mail + mot de passe pour la connexion Firebase.
                       2) Key variables:
-                      - Champs contrôlés `loginAlias`, `loginPassword`.
+                      - Champs contrôlés `loginEmail`, `loginPassword`.
                       3) Logic flow:
-                      - Soumission -> `handleLoginSubmit` (préparation API / fermeture provisoire). */}
+                      - Soumission → `handleLoginSubmit`. */}
                   <form onSubmit={handleLoginSubmit} className="mt-6 space-y-4">
                     {authFormError && (
                       <p className="rounded-[10px] bg-rose-500/15 px-3 py-2 text-sm text-rose-200 ring-1 ring-rose-400/25">
@@ -1754,20 +1723,20 @@ export default function TeslaFuturisticPortalConcept() {
                     )}
                     <div>
                       <label
-                        htmlFor="login-alias"
+                        htmlFor="login-email"
                         className="mb-1.5 block text-[11px] uppercase tracking-[0.22em] text-white/45"
                       >
-                        Alias
+                        E-mail
                       </label>
                       <input
-                        id="login-alias"
-                        name="alias"
-                        type="text"
-                        value={loginAlias}
-                        onChange={(event) => setLoginAlias(event.target.value)}
+                        id="login-email"
+                        name="email"
+                        type="email"
+                        value={loginEmail}
+                        onChange={(event) => setLoginEmail(event.target.value)}
                         autoComplete="username"
                         className="w-full rounded-[12px] bg-black/35 px-3 py-3 text-sm text-white ring-1 ring-white/10 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-white/20"
-                        placeholder="Votre alias"
+                        placeholder="vous@exemple.com"
                       />
                     </div>
                     <div>
@@ -1795,7 +1764,7 @@ export default function TeslaFuturisticPortalConcept() {
                       Connexion
                     </button>
                     <p className="text-xs leading-relaxed text-white/55">
-                      En cas d&apos;oubli de votre alias ou de votre mot de passe, vous devez recréer un compte.
+                      Mot de passe oublié : une réinitialisation par e-mail pourra être ajoutée dans l’app (Firebase Auth).
                     </p>
                   </form>
                 </div>
@@ -1806,11 +1775,11 @@ export default function TeslaFuturisticPortalConcept() {
                     Inscription
                   </h2>
                   {/* 1) Purpose:
-                      - Créer un compte avec alias, mot de passe et confirmation (sans e-mail).
+                      - Créer un compte Firebase (e-mail, mot de passe et confirmation).
                       2) Key variables:
                       - `registerPasswordMismatch`: affiche une alerte si les mots de passe divergent.
                       3) Logic flow:
-                      - Soumission -> `handleRegisterSubmit` vérifie la paire de mots de passe puis ferme si OK. */}
+                      - Soumission → `handleRegisterSubmit` vérifie la paire de mots de passe puis ferme si OK. */}
                   <form onSubmit={handleRegisterSubmit} className="mt-6 space-y-4">
                     {authFormError && (
                       <p className="rounded-[10px] bg-rose-500/15 px-3 py-2 text-sm text-rose-200 ring-1 ring-rose-400/25">
@@ -1819,20 +1788,20 @@ export default function TeslaFuturisticPortalConcept() {
                     )}
                     <div>
                       <label
-                        htmlFor="register-alias"
+                        htmlFor="register-email"
                         className="mb-1.5 block text-[11px] uppercase tracking-[0.22em] text-white/45"
                       >
-                        Alias
+                        E-mail
                       </label>
                       <input
-                        id="register-alias"
-                        name="alias"
-                        type="text"
-                        value={registerAlias}
-                        onChange={(event) => setRegisterAlias(event.target.value)}
+                        id="register-email"
+                        name="email"
+                        type="email"
+                        value={registerEmail}
+                        onChange={(event) => setRegisterEmail(event.target.value)}
                         autoComplete="username"
                         className="w-full rounded-[12px] bg-black/35 px-3 py-3 text-sm text-white ring-1 ring-white/10 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-white/20"
-                        placeholder="Choisissez un alias"
+                        placeholder="vous@exemple.com"
                       />
                     </div>
                     <div>
@@ -1889,8 +1858,8 @@ export default function TeslaFuturisticPortalConcept() {
                       Confirmer
                     </button>
                     <p className="text-xs leading-relaxed text-white/55">
-                      Aucune adresse e-mail n&apos;est nécessaire. Nous ne recueillons aucune information, ni à des
-                      fins personnelles, ni à des fins commerciales.
+                      L’e-mail sert à votre compte et à la récupération du mot de passe ; les favoris sont stockés dans
+                      Firestore, accessibles uniquement avec votre session.
                     </p>
                   </form>
                 </div>

@@ -10,10 +10,6 @@ web/dist/
 web/.env
 web/.env.local
 
-# Google Apps Script — copies locales, clasp, secrets (les exemples restent dans gas/example/)
-gas/private/
-gas/.clasp.json
-gas/node_modules/
 *.secret.json
 
 # IDE / OS

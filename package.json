@@ -1,7 +1,5 @@
 {
   "name": "navisphere",
   "private": true,
-  "dependencies": {
-    "@vercel/node": "^3.2.0"
-  }
+  "version": "0.0.0"
 }
