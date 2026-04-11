@@ -24,6 +24,7 @@ import { DockFavoritesBar } from './components/DockFavoritesBar';
 import { FavoriteConfirmModal } from './components/FavoriteConfirmModal';
 import { ServiceCatalogTile } from './components/ServiceCatalogTile';
 import { SpaceXUpcomingLaunch } from './components/SpaceXUpcomingLaunch';
+import { ViewportDebugOverlay } from './components/ViewportDebugOverlay';
 import { Game2048 } from './games/Game2048';
 import { MemoryGame } from './games/MemoryGame';
 import { SnakeGame } from './games/SnakeGame';
@@ -2067,6 +2068,8 @@ export default function TeslaFuturisticPortalConcept() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ViewportDebugOverlay />
     </div>
   );
 }
