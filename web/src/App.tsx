@@ -37,6 +37,7 @@ import { MemoryGame } from './games/MemoryGame';
 import { SnakeGame } from './games/SnakeGame';
 import { TicTacToeGame } from './games/TicTacToeGame';
 import { ConnectFourGame } from './games/ConnectFourGame';
+import { TetrisGame } from './games/TetrisGame';
 import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
 // 1) Purpose:
@@ -140,6 +141,11 @@ const navisphereGames: { id: string; title: string; blurb: string }[] = [
     id: 'puissance4',
     title: 'Puissance 4',
     blurb: 'Alignez quatre jetons — à deux ou contre la Tesla, avec chute animée.',
+  },
+  {
+    id: 'tetris',
+    title: 'Tetris',
+    blurb: 'Classique 10×20 — gestes ou flèches, rotation et chute rapide.',
   },
 ];
 
@@ -1575,6 +1581,17 @@ export default function TeslaFuturisticPortalConcept() {
                       Puissance 4
                     </span>
                     <ConnectFourGame />
+                  </div>
+                ) : openGameId === 'tetris' ? (
+                  <div
+                    className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 pt-10 pb-4"
+                    role="region"
+                    aria-labelledby="game-tetris-title"
+                  >
+                    <span id="game-tetris-title" className="sr-only">
+                      Tetris
+                    </span>
+                    <TetrisGame />
                   </div>
                 ) : (
                   <div className="relative h-[calc(100%-56px)]">
