@@ -127,9 +127,9 @@ function buildDisplayBoard(board: TetBoard, piece: Piece | null): TetCell[][] {
   return g;
 }
 
-// 1) Purpose: mini-grille 4×4 pour l’aperçu « suivant ».
-// 2) Key variables: offsets de `BASE_SHAPES[id]` sans rotation.
-// 3) Logic flow: translation pour centrer approximativement.
+// 1) Purpose: aperçu « suivant » dans un cadre **fixe** (plus de saut de mise en page selon la pièce).
+// 2) Key variables: grille 4×4 (toute pièce de base tient dedans) ; centrage par boîte englobante.
+// 3) Logic flow: bbox → offset `(startCol,startRow)` pour centrer dans 4×4 → cases booléennes.
 function NextPreview({ id }: { id: TetId }) {
   const raw = BASE_SHAPES[id];
   let minX = Infinity;
@@ -142,25 +142,28 @@ function NextPreview({ id }: { id: TetId }) {
     maxX = Math.max(maxX, dx);
     maxY = Math.max(maxY, dy);
   }
-  const ox = -minX;
-  const oy = -minY;
-  const w = maxX - minX + 1;
-  const h = maxY - minY + 1;
-  const cells: boolean[][] = Array.from({ length: h }, () => Array.from({ length: w }, () => false));
+  const bw = maxX - minX + 1;
+  const bh = maxY - minY + 1;
+  const startCol = Math.floor((4 - bw) / 2);
+  const startRow = Math.floor((4 - bh) / 2);
+  const cells: boolean[][] = Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => false));
   for (const [dx, dy] of raw) {
-    cells[dy + oy]![dx + ox] = true;
+    const c = dx - minX + startCol;
+    const r = dy - minY + startRow;
+    if (r >= 0 && r < 4 && c >= 0 && c < 4) {
+      cells[r]![c] = true;
+    }
   }
   return (
     <div
-      className="grid gap-0.5 p-2"
-      style={{ gridTemplateColumns: `repeat(${w}, minmax(0, 1fr))` }}
+      className="grid h-[4.5rem] w-[4.5rem] shrink-0 grid-cols-4 grid-rows-4 gap-0.5 sm:h-[5rem] sm:w-[5rem]"
       aria-hidden
     >
       {cells.flatMap((row, r) =>
         row.map((on, c) => (
           <div
             key={`${r}-${c}`}
-            className={`aspect-square w-5 rounded-sm sm:w-6 ${on ? TET_STYLE[id] : 'bg-black/40 ring-1 ring-white/5'}`}
+            className={`min-h-0 min-w-0 rounded-[2px] ${on ? TET_STYLE[id] : 'bg-black/45 ring-1 ring-inset ring-white/[0.06]'}`}
           />
         )),
       )}
@@ -323,16 +326,13 @@ export function TetrisGame() {
         </button>
       </div>
 
-      <p className="shrink-0 px-1 text-center text-[11px] leading-snug text-white/50">
-        Glissez : gauche / droite / bas (chute rapide). Tapez le plateau pour pivoter. Clavier : ← → ↓ et ↑
-        pour tourner. Échap : pause.
-      </p>
-
-      <div className="flex min-h-0 flex-1 items-center justify-center gap-3 overflow-auto p-1">
-        {/* 4) Aperçu « Suivant » — cadre assorti au plateau. */}
-        <div className="hidden shrink-0 flex-col items-center rounded-2xl border border-cyan-500/20 bg-black/35 p-2 ring-1 ring-white/10 sm:flex">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/70">Suivant</p>
-          <NextPreview id={game.nextId} />
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-auto p-1 sm:flex-row sm:gap-3">
+        {/* 4) Encart Suivant : largeur/hauteur fixes pour éviter tout reflow du layout. */}
+        <div className="hidden w-[6.25rem] shrink-0 flex-col items-center rounded-2xl border border-cyan-500/20 bg-black/35 py-2 ring-1 ring-white/10 sm:flex sm:w-[6.75rem]">
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/70">Suivant</p>
+          <div className="flex min-h-[4.5rem] min-w-[4.5rem] items-center justify-center sm:min-h-[5rem] sm:min-w-[5rem]">
+            <NextPreview id={game.nextId} />
+          </div>
         </div>
 
         {/* 4) Zone interactive : `touch-action-none` pour les swipes propres sur mobile. */}
@@ -344,18 +344,18 @@ export function TetrisGame() {
           onKeyDown={onKeyDown}
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
-          className="relative max-h-[min(72vh,640px)] w-full max-w-[min(92vw,360px)] touch-none outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="relative max-h-[min(72vh,600px)] w-full max-w-[min(90vw,300px)] touch-none outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 sm:max-w-[min(88vw,280px)]"
         >
-          <div className="rounded-[20px] border border-cyan-400/30 bg-gradient-to-b from-slate-900/95 to-black/95 p-2 shadow-[0_0_40px_rgba(34,211,238,0.12)] ring-1 ring-white/10 sm:p-2.5">
+          <div className="rounded-[18px] border border-cyan-400/30 bg-gradient-to-b from-slate-900/95 to-black/95 p-1.5 shadow-[0_0_40px_rgba(34,211,238,0.12)] ring-1 ring-white/10 sm:rounded-[20px] sm:p-2">
             <div
-              className="grid gap-0.5 sm:gap-1"
+              className="grid gap-0.5"
               style={{ gridTemplateColumns: `repeat(${TET_COLS}, minmax(0, 1fr))` }}
             >
               {display.map((row, r) =>
                 row.map((cell, c) => (
                   <div
                     key={`${r}-${c}`}
-                    className={`aspect-square min-h-0 w-full rounded-[3px] sm:rounded-[4px] ${
+                    className={`aspect-square min-h-0 w-full rounded-[2px] sm:rounded-[3px] ${
                       cell
                         ? TET_STYLE[cell]
                         : 'bg-black/50 ring-1 ring-inset ring-cyan-950/40'
@@ -394,10 +394,12 @@ export function TetrisGame() {
           )}
         </div>
 
-        {/* 4) Aperçu mobile sous le plateau (colonne unique). */}
-        <div className="flex shrink-0 flex-col items-center rounded-2xl border border-cyan-500/20 bg-black/35 p-2 ring-1 ring-white/10 sm:hidden">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/70">Suivant</p>
-          <NextPreview id={game.nextId} />
+        {/* 4) Même encart fixe sur mobile (sous le plateau). */}
+        <div className="flex w-[6.75rem] shrink-0 flex-col items-center rounded-2xl border border-cyan-500/20 bg-black/35 py-2 ring-1 ring-white/10 sm:hidden">
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-200/70">Suivant</p>
+          <div className="flex min-h-[4.5rem] min-w-[4.5rem] items-center justify-center">
+            <NextPreview id={game.nextId} />
+          </div>
         </div>
       </div>
     </div>
