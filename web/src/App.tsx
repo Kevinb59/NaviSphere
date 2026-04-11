@@ -38,6 +38,7 @@ import { SnakeGame } from './games/SnakeGame';
 import { TicTacToeGame } from './games/TicTacToeGame';
 import { ConnectFourGame } from './games/ConnectFourGame';
 import { TetrisGame } from './games/TetrisGame';
+import { TowerBlocksGame } from './games/TowerBlocksGame';
 import { buildStarFieldNodes, buildWarpParticles } from './visuals/spaceFieldRandom';
 
 // 1) Purpose:
@@ -146,6 +147,11 @@ const navisphereGames: { id: string; title: string; blurb: string }[] = [
     id: 'tetris',
     title: 'Tetris',
     blurb: 'Classique 10×20 — gestes ou flèches, rotation et chute rapide.',
+  },
+  {
+    id: 'gratte-ciel',
+    title: 'Gratte-ciel',
+    blurb: 'Empilez des blocs parfaitement alignés — inspiré de Tower Blocks.',
   },
 ];
 
@@ -1592,6 +1598,17 @@ export default function TeslaFuturisticPortalConcept() {
                       Tetris
                     </span>
                     <TetrisGame />
+                  </div>
+                ) : openGameId === 'gratte-ciel' ? (
+                  <div
+                    className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 pt-10 pb-4"
+                    role="region"
+                    aria-labelledby="game-gratte-ciel-title"
+                  >
+                    <span id="game-gratte-ciel-title" className="sr-only">
+                      Gratte-ciel
+                    </span>
+                    <TowerBlocksGame />
                   </div>
                 ) : (
                   <div className="relative h-[calc(100%-56px)]">
