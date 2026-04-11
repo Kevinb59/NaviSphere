@@ -206,14 +206,15 @@ export function MemoryGame() {
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-3" tabIndex={-1}>
       {/* 4) Barre stats + nouvelle partie : même esprit que Snake / 2048 dans le panneau central. */}
       {/* 4) Bandeau stats discret pour laisser le fond visible autour du tapis. */}
-      <div className="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:flex-nowrap">
-        <div className="min-w-0 flex-1 rounded-xl border border-white/12 bg-black/25 px-2 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5">
-          <p className="text-[9px] uppercase tracking-[0.18em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Coups</p>
-          <p className="text-base font-semibold tabular-nums text-white sm:text-lg">{moves}</p>
+      {/* 4) Stats en largeur contenu ; pas de flex-1 sur Coups/Paires. */}
+      <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-2">
+        <div className="shrink-0 rounded-xl border border-white/12 bg-black/25 px-3 py-2 text-center backdrop-blur-sm">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/45">Coups</p>
+          <p className="text-base font-semibold tabular-nums text-white">{moves}</p>
         </div>
-        <div className="min-w-0 flex-1 rounded-xl border border-white/12 bg-black/25 px-2 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5">
-          <p className="text-[9px] uppercase tracking-[0.18em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Paires</p>
-          <p className="text-base font-semibold tabular-nums text-sky-200/95 sm:text-lg">
+        <div className="shrink-0 rounded-xl border border-white/12 bg-black/25 px-3 py-2 text-center backdrop-blur-sm">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/45">Paires</p>
+          <p className="text-base font-semibold tabular-nums text-sky-200/95">
             {vanishedPairIds.size}/{PAIR_COUNT}
           </p>
         </div>
@@ -226,10 +227,8 @@ export function MemoryGame() {
         </button>
       </div>
 
-      <div
-        ref={boardWrapRef}
-        className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/12 bg-black/22 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-[5px] sm:p-3"
-      >
+      {/* 4) Aire des cartes sans cadre visible : seules les cartes ressortent sur le fond. */}
+      <div ref={boardWrapRef} className="relative min-h-0 flex-1 overflow-hidden p-0">
         <div className="flex h-full w-full items-center justify-center">
           <div
             className="grid gap-1.5 sm:gap-2"
@@ -263,7 +262,7 @@ export function MemoryGame() {
         </div>
 
         {won && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-black/55 p-4 text-center backdrop-blur-[3px]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-black/55 p-4 text-center backdrop-blur-[3px]">
             <p className="text-lg font-semibold text-white">Bravo !</p>
             <p className="mt-1 text-sm text-white/70">
               Toutes les paires trouvées en {moves} coups.

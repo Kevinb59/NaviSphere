@@ -149,19 +149,20 @@ export function Game2048() {
       aria-label="2048"
     >
       {/* 4) Scores : petits panneaux vitrés ; pas de grand cadre autour du jeu pour laisser voir le starfield. */}
-      <div className="flex w-full gap-2">
-        <div className="flex-1 rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-center backdrop-blur-sm">
+      <div className="flex w-full flex-wrap justify-center gap-2">
+        <div className="shrink-0 rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-center backdrop-blur-sm">
           <p className="text-[9px] uppercase tracking-widest text-white/50">Score</p>
           <p className="text-base font-semibold tabular-nums text-white">{score}</p>
         </div>
-        <div className="flex-1 rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-center backdrop-blur-sm">
+        <div className="shrink-0 rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-center backdrop-blur-sm">
           <p className="text-[9px] uppercase tracking-widest text-white/50">Meilleur</p>
           <p className="text-base font-semibold tabular-nums text-amber-200/90">{best}</p>
         </div>
       </div>
 
+      {/* 4) Grille seule visible : pas de cadre ni fond autour des 16 cases ; swipe sur le bloc grille. */}
       <div
-        className="relative w-full touch-none select-none rounded-2xl border border-white/12 bg-black/25 p-2 backdrop-blur-[6px]"
+        className="relative mx-auto w-full max-w-[300px] touch-none select-none"
         onTouchStart={(e) => {
           const t = e.touches[0];
           if (t) setTouchStart({ x: t.clientX, y: t.clientY });
@@ -169,7 +170,7 @@ export function Game2048() {
         onTouchEnd={onTouchEnd}
       >
         <div
-          className="mx-auto grid aspect-square w-full max-w-[300px] grid-cols-4 gap-1.5 sm:gap-2"
+          className="grid aspect-square w-full grid-cols-4 gap-1.5 sm:gap-2"
           style={{ touchAction: 'none' }}
         >
           {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
@@ -196,7 +197,7 @@ export function Game2048() {
         </div>
 
         {wonBanner && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-black/60 p-4 text-center backdrop-blur-sm">
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-black/60 p-4 text-center backdrop-blur-sm">
             <p className="text-lg font-semibold text-white">Bravo — 2048 !</p>
             <button
               type="button"
@@ -209,7 +210,7 @@ export function Game2048() {
         )}
 
         {gameOver && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-black/65 p-4 text-center backdrop-blur-sm">
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-black/65 p-4 text-center backdrop-blur-sm">
             <p className="text-lg font-semibold text-white">Partie terminée</p>
             <button
               type="button"
@@ -225,7 +226,7 @@ export function Game2048() {
       <button
         type="button"
         onClick={resetGame}
-        className="w-full rounded-xl border border-white/18 bg-black/35 px-3 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/45"
+        className="mx-auto shrink-0 rounded-xl border border-white/18 bg-black/35 px-6 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/45"
       >
         Nouvelle partie
       </button>

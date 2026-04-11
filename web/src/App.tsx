@@ -1033,7 +1033,11 @@ export default function TeslaFuturisticPortalConcept() {
         <div className="relative h-full overflow-hidden rounded-[24px] border border-white/10 bg-[#11151b] shadow-[0_40px_140px_rgba(0,0,0,0.48)]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.04),transparent_40%)]" />
 
-          <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between px-5 py-4 md:px-7">
+          <div
+            className={`absolute inset-x-0 top-0 z-30 flex items-start justify-between px-5 py-4 md:px-7 ${
+              openGameId ? 'hidden' : ''
+            }`}
+          >
             <div className="w-[clamp(208px,22vw,268px)]">
               <div className="flex items-center gap-3 rounded-full bg-black/25 px-4 py-2 ring-1 ring-white/10 backdrop-blur-xl">
                 <Compass className="h-[clamp(19px,1.55vw,22px)] w-[clamp(19px,1.55vw,22px)] text-white/75" />
@@ -1446,14 +1450,14 @@ export default function TeslaFuturisticPortalConcept() {
                 transition={{ duration: 0.28, ease: 'easeOut' }}
                 className={
                   openGameId
-                    ? 'absolute inset-x-4 top-4 bottom-[10%] z-30 flex min-h-0 flex-col rounded-[22px] border border-white/15 bg-transparent p-3 shadow-none md:inset-x-6 md:p-4'
+                    ? 'absolute inset-x-4 top-4 bottom-4 z-30 flex min-h-0 flex-col rounded-none border-0 bg-transparent p-2 shadow-none ring-0 md:inset-x-6 md:p-3'
                     : 'absolute left-[calc(1.5rem+clamp(208px,22vw,268px)+0.5rem)] right-[calc(1rem+clamp(208px,22vw,268px)+0.5rem)] top-4 bottom-[10%] z-30 rounded-[20px] bg-black/30 p-5 ring-1 ring-white/10 backdrop-blur-2xl'
                 }
               >
                 {/* 1) Purpose:
-                    - Panneau central : catalogues (flou, marges latérales) ou jeu (pleine largeur, fond laissant voir le starfield).
+                    - Catalogues : panneau flou entre les colonnes. Jeu : plein écran utilisable (bottom-4 car dock masqué), sans bordure.
                     2) Key variables:
-                    - `openGameId` : pas d’en-tête catalogue ; bouton fermer flottant ; jeux en flex-1.
+                    - `openGameId` : header + dock + colonnes cachés ; bouton Fermer seul en surimpression.
                     3) Logic flow:
                     - Fermer : jeu → recherche → catégorie. */}
                 {openGameId && (
@@ -1580,7 +1584,11 @@ export default function TeslaFuturisticPortalConcept() {
             )}
           </AnimatePresence>
 
-          <div className="absolute inset-x-0 bottom-0 z-50 flex flex-col items-center p-4 pt-2 md:p-5 md:pt-3">
+          <div
+            className={`absolute inset-x-0 bottom-0 z-50 flex flex-col items-center p-4 pt-2 md:p-5 md:pt-3 ${
+              openGameId ? 'hidden' : ''
+            }`}
+          >
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2055,7 +2063,7 @@ export default function TeslaFuturisticPortalConcept() {
         )}
       </AnimatePresence>
 
-      <ViewportDebugOverlay />
+      {!openGameId && <ViewportDebugOverlay />}
     </div>
   );
 }
