@@ -1,6 +1,12 @@
+import type { GameDifficultyLevel } from './gameDifficulty';
+import { rollHardSuboptimalMove, rollMediumRandomMove } from './gameDifficulty';
+
 export type Player = 'X' | 'O';
 
 export type Board = (Player | null)[];
+
+/** Alias morpion : aligné sur les niveaux globaux des mini-jeux. */
+export type AiDifficulty = GameDifficultyLevel;
 
 export const WIN_LINES: [number, number, number][] = [
   [0, 1, 2],
@@ -59,8 +65,6 @@ export function emptyIndices(board: Board): number[] {
 function randomPick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
-
-export type AiDifficulty = 'easy' | 'medium' | 'hard';
 
 // 1) Purpose: coup gagnant immédiat pour `player` s’il existe.
 // 2) Key variables: chaque case vide testée par simulation locale.
@@ -126,27 +130,35 @@ function minimaxScore(board: Board, ai: Player): number {
   return best;
 }
 
-// 1) Purpose: meilleur coup pour l’IA (O) par minimax — partie parfaite au morpion.
-// 2) Key variables: évaluation de chaque case vide pour le tour de l’IA.
-// 3) Logic flow: simule O sur chaque `i` → score minimax du résultat → argmax.
-function minimaxBestMove(board: Board, ai: Player): number {
-  const moves = emptyIndices(board);
-  let bestMove = moves[0]!;
-  let bestScore = -Infinity;
-  for (const i of moves) {
+// 1) Purpose: scorer chaque coup possible pour l’IA via minimax (après coup simulé).
+// 2) Key variables: paires `{ index, score }` triables par score décroissant.
+// 3) Logic flow: pour chaque case vide → pose `ai` → `minimaxScore` sur l’état suivant.
+function minimaxRankedMoves(board: Board, ai: Player): { index: number; score: number }[] {
+  return emptyIndices(board).map((i) => {
     const nb = board.slice() as Board;
     nb[i] = ai;
-    const s = minimaxScore(nb, ai);
-    if (s > bestScore) {
-      bestScore = s;
-      bestMove = i;
-    }
-  }
-  return bestMove;
+    return { index: i, score: minimaxScore(nb, ai) };
+  });
 }
 
-// 1) Purpose: choisir l’index du coup de la Tesla selon la difficulté.
-// 2) Key variables: `easy` aléatoire pur ; `medium` mélange aléatoire + heuristique ; `hard` minimax.
+// 1) Purpose: niveau difficile — très fort mais pas invincible (réutilise `rollHardSuboptimalMove`).
+// 2) Key variables: meilleur score `top` ; coups strictement pires que `top` pour « erreur » contrôlée.
+// 3) Logic flow: si tirage sous-optimal et coups pires existent → en choisir un au hasard ; sinon meilleur(s) avec bris d’égalité aléatoire.
+function hardDifficultyMove(board: Board, ai: Player): number {
+  const ranked = minimaxRankedMoves(board, ai);
+  ranked.sort((a, b) => b.score - a.score);
+  const top = ranked[0]!.score;
+  const strictlyWorse = ranked.filter((r) => r.score < top);
+
+  if (rollHardSuboptimalMove() && strictlyWorse.length > 0) {
+    return randomPick(strictlyWorse).index;
+  }
+  const amongBest = ranked.filter((r) => r.score === top);
+  return randomPick(amongBest).index;
+}
+
+// 1) Purpose: choisir l’index du coup de la Tesla selon la difficulté (constantes partagées `gameDifficulty`).
+// 2) Key variables: `easy` aléatoire ; `medium` `rollMediumRandomMove` + heuristique ; `hard` minimax + imperfection.
 // 3) Logic flow: humain = X, IA = O ; retourne -1 si aucune case libre.
 export function aiChooseMove(board: Board, difficulty: AiDifficulty): number {
   const human: Player = 'X';
@@ -159,9 +171,9 @@ export function aiChooseMove(board: Board, difficulty: AiDifficulty): number {
   }
 
   if (difficulty === 'medium') {
-    if (Math.random() < 0.35) return randomPick(empties);
+    if (rollMediumRandomMove()) return randomPick(empties);
     return heuristicMove(board, ai, human);
   }
 
-  return minimaxBestMove(board, ai);
+  return hardDifficultyMove(board, ai);
 }

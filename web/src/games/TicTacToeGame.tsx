@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { GameDifficultyLevel } from './gameDifficulty';
 import {
   aiChooseMove,
   emptyBoard,
   nextPlayer,
   outcome,
-  type AiDifficulty,
   type Board,
   type Player,
 } from './gameTicTacToeLogic';
@@ -61,7 +61,7 @@ function BoardCell({
 export function TicTacToeGame() {
   const [board, setBoard] = useState<Board>(() => emptyBoard());
   const [mode, setMode] = useState<GameMode>('pvp');
-  const [difficulty, setDifficulty] = useState<AiDifficulty>('medium');
+  const [difficulty, setDifficulty] = useState<GameDifficultyLevel>('medium');
 
   const status = useMemo(() => outcome(board), [board]);
   const current = useMemo(() => nextPlayer(board), [board]);
@@ -77,7 +77,7 @@ export function TicTacToeGame() {
     setBoard(emptyBoard());
   }, []);
 
-  const setDifficultyAndReset = useCallback((d: AiDifficulty) => {
+  const setDifficultyAndReset = useCallback((d: GameDifficultyLevel) => {
     setDifficulty(d);
     setBoard(emptyBoard());
   }, []);
@@ -187,7 +187,7 @@ export function TicTacToeGame() {
               [
                 { id: 'easy' as const, label: 'Facile' },
                 { id: 'medium' as const, label: 'Moyen' },
-                { id: 'hard' as const, label: 'Minimax' },
+                { id: 'hard' as const, label: 'Difficile' },
               ] as const
             ).map(({ id, label }) => (
               <button
