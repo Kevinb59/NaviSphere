@@ -195,9 +195,10 @@ function drawGame(
     height * 0.5,
     Math.max(width, height) * 0.72,
   );
-  rg.addColorStop(0, 'rgba(28, 42, 62, 0.5)');
-  rg.addColorStop(0.45, 'rgba(12, 16, 26, 0.82)');
-  rg.addColorStop(1, 'rgba(4, 6, 12, 0.92)');
+  // 4) Fond canvas semi-transparent pour laisser transparaître le starfield NaviSphere derrière le jeu.
+  rg.addColorStop(0, 'rgba(28, 42, 62, 0.28)');
+  rg.addColorStop(0.45, 'rgba(12, 16, 26, 0.42)');
+  rg.addColorStop(1, 'rgba(4, 6, 12, 0.52)');
   ctx.fillStyle = rg;
   ctx.fillRect(0, 0, width, height);
 
@@ -441,26 +442,27 @@ export function SnakeGame() {
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2" tabIndex={-1}>
       {/* 4) Barre d’action : Pause | Score | Meilleur | Nouvelle partie — pleine largeur du panneau central. */}
+      {/* 4) Barre d’action légère (verre fin) pour ne pas masquer le fond interactif. */}
       <div className="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:flex-nowrap">
         <button
           type="button"
           onClick={() => setState((s) => ({ ...s, paused: !s.paused }))}
-          className="shrink-0 rounded-[14px] border border-white/12 bg-white/[0.06] px-3 py-2.5 text-xs font-medium text-white transition hover:bg-white/[0.11] sm:px-4 sm:text-sm"
+          className="shrink-0 rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-black/40 sm:px-4 sm:text-sm"
         >
           {state.paused ? 'Reprendre' : 'Pause'}
         </button>
-        <div className="min-w-0 flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-3 sm:py-2.5">
-          <p className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px] sm:tracking-[0.2em]">Score</p>
+        <div className="min-w-0 flex-1 rounded-xl border border-white/12 bg-black/25 px-2 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Score</p>
           <p className="text-base font-semibold tabular-nums text-white sm:text-lg">{state.score}</p>
         </div>
-        <div className="min-w-0 flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-3 sm:py-2.5">
-          <p className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px] sm:tracking-[0.2em]">Meilleur</p>
+        <div className="min-w-0 flex-1 rounded-xl border border-white/12 bg-black/25 px-2 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Meilleur</p>
           <p className="text-base font-semibold tabular-nums text-sky-200/95 sm:text-lg">{best}</p>
         </div>
         <button
           type="button"
           onClick={reset}
-          className="shrink-0 rounded-[14px] border border-white/12 bg-white/[0.06] px-3 py-2.5 text-xs font-medium text-white transition hover:bg-white/[0.11] sm:px-4 sm:text-sm"
+          className="shrink-0 rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-black/40 sm:px-4 sm:text-sm"
         >
           Nouvelle partie
         </button>
@@ -468,7 +470,7 @@ export function SnakeGame() {
 
       <div
         ref={wrapRef}
-        className="relative flex min-h-0 flex-1 touch-none select-none items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.35)]"
+        className="relative flex min-h-0 flex-1 touch-none select-none items-center justify-center overflow-hidden rounded-2xl border border-white/12 bg-black/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[4px]"
         style={{ touchAction: 'none' }}
         onTouchStart={(ev) => {
           const t = ev.touches[0];

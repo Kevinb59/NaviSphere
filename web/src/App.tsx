@@ -1264,9 +1264,11 @@ export default function TeslaFuturisticPortalConcept() {
 
           <motion.div
             initial={{ opacity: 0, x: -16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.45 }}
-            className="absolute left-4 top-24 z-20 w-[clamp(208px,22vw,268px)] max-w-[calc(100%-2rem)] space-y-4 md:left-6 md:top-28"
+            animate={{ opacity: openGameId ? 0 : 1, x: openGameId ? -24 : 0 }}
+            transition={{ duration: 0.28 }}
+            className={`absolute left-4 top-24 z-20 w-[clamp(208px,22vw,268px)] max-w-[calc(100%-2rem)] space-y-4 md:left-6 md:top-28 ${
+              openGameId ? 'hidden' : ''
+            }`}
           >
             <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
               <div className="mb-3">
@@ -1391,9 +1393,11 @@ export default function TeslaFuturisticPortalConcept() {
               3) Logic flow: `right-[calc(...)]` du panneau central reprend le même clamp. */}
           <motion.div
             initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.45, delay: 0.08 }}
-            className="absolute right-4 top-20 z-20 w-[clamp(208px,22vw,268px)] max-w-[calc(100%-2rem)] space-y-4 md:right-6"
+            animate={{ opacity: openGameId ? 0 : 1, x: openGameId ? 24 : 0 }}
+            transition={{ duration: 0.28, delay: openGameId ? 0 : 0.08 }}
+            className={`absolute right-4 top-20 z-20 w-[clamp(208px,22vw,268px)] max-w-[calc(100%-2rem)] space-y-4 md:right-6 ${
+              openGameId ? 'hidden' : ''
+            }`}
           >
             <div className="rounded-[18px] bg-black/30 p-4 ring-1 ring-white/10 backdrop-blur-2xl">
               <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Accès véhicule</p>
@@ -1440,89 +1444,102 @@ export default function TeslaFuturisticPortalConcept() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 14, scale: 0.985 }}
                 transition={{ duration: 0.28, ease: 'easeOut' }}
-                className="absolute left-[calc(1.5rem+clamp(208px,22vw,268px)+0.5rem)] right-[calc(1rem+clamp(208px,22vw,268px)+0.5rem)] top-4 bottom-[10%] z-30 rounded-[20px] bg-black/30 p-5 ring-1 ring-white/10 backdrop-blur-2xl"
+                className={
+                  openGameId
+                    ? 'absolute inset-x-4 top-4 bottom-[10%] z-30 flex min-h-0 flex-col rounded-[22px] border border-white/15 bg-transparent p-3 shadow-none md:inset-x-6 md:p-4'
+                    : 'absolute left-[calc(1.5rem+clamp(208px,22vw,268px)+0.5rem)] right-[calc(1rem+clamp(208px,22vw,268px)+0.5rem)] top-4 bottom-[10%] z-30 rounded-[20px] bg-black/30 p-5 ring-1 ring-white/10 backdrop-blur-2xl'
+                }
               >
                 {/* 1) Purpose:
-                    - Panneau central : catalogues (Streaming, etc.) ou mini-jeu intégré ; le reste de l’écran reste visible.
+                    - Panneau central : catalogues (flou, marges latérales) ou jeu (pleine largeur, fond laissant voir le starfield).
                     2) Key variables:
-                    - `openGameId`: prioritaire sur la grille de services quand un jeu est lancé.
-                    - `activeCenterCategory` / `isSearchPanelOpen`: catalogues et recherche.
+                    - `openGameId` : pas d’en-tête catalogue ; bouton fermer flottant ; jeux en flex-1.
                     3) Logic flow:
-                    - Fermer vide d’abord le jeu, puis la recherche, puis la catégorie. */}
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">
-                      {openGameId === '2048' || openGameId === 'snake' || openGameId === 'memory'
-                        ? 'Jeu'
-                        : isSearchPanelOpen
-                          ? 'Recherche'
-                          : activeCenterCategory}
-                    </p>
-                    <h3
-                      id={
-                        openGameId === '2048'
-                          ? 'game-2048-title'
-                          : openGameId === 'snake'
-                            ? 'game-snake-title'
-                            : openGameId === 'memory'
-                              ? 'game-memory-title'
-                              : undefined
-                      }
-                      className="mt-1 text-lg font-medium text-white"
-                    >
-                      {openGameId === '2048'
-                        ? '2048'
-                        : openGameId === 'snake'
-                          ? 'Snake'
-                          : openGameId === 'memory'
-                            ? 'Memory'
-                            : isSearchPanelOpen
-                              ? 'Résultats'
-                              : activeCenterCategory === 'Musique'
-                                ? 'Services musicaux'
-                                : activeCenterCategory === 'Jeux'
-                                  ? 'Services de jeux'
-                                  : activeCenterCategory === 'Réseaux sociaux'
-                                    ? 'Plateformes sociales'
-                                    : activeCenterCategory === 'Communication'
-                                      ? 'Services de communication'
-                                      : activeCenterCategory === 'Navigation'
-                                        ? 'Services de navigation'
-                                        : activeCenterCategory === 'Recharge'
-                                          ? 'Services de recharge'
-                                          : 'Services vidéo'}
-                    </h3>
-                  </div>
+                    - Fermer : jeu → recherche → catégorie. */}
+                {openGameId && (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (openGameId) {
-                        setOpenGameId(null);
-                        return;
-                      }
-                      if (isSearchPanelOpen) {
-                        setSearchQuery('');
-                        return;
-                      }
-                      setActiveCenterCategory(null);
-                    }}
-                    className="flex items-center gap-2 rounded-full bg-white/8 px-3 py-2 text-xs text-white/80 ring-1 ring-white/10 transition hover:bg-white/[0.14]"
+                    onClick={() => setOpenGameId(null)}
+                    className="absolute right-2 top-2 z-50 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/35 px-3 py-2 text-xs font-medium text-white/90 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:bg-black/50 md:right-3 md:top-3"
+                    aria-label="Fermer le jeu"
                   >
                     <X className="h-4 w-4" />
                     Fermer
                   </button>
-                </div>
+                )}
+
+                {!openGameId && (
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">
+                        {isSearchPanelOpen ? 'Recherche' : activeCenterCategory}
+                      </p>
+                      <h3 className="mt-1 text-lg font-medium text-white">
+                        {isSearchPanelOpen
+                          ? 'Résultats'
+                          : activeCenterCategory === 'Musique'
+                            ? 'Services musicaux'
+                            : activeCenterCategory === 'Jeux'
+                              ? 'Services de jeux'
+                              : activeCenterCategory === 'Réseaux sociaux'
+                                ? 'Plateformes sociales'
+                                : activeCenterCategory === 'Communication'
+                                  ? 'Services de communication'
+                                  : activeCenterCategory === 'Navigation'
+                                    ? 'Services de navigation'
+                                    : activeCenterCategory === 'Recharge'
+                                      ? 'Services de recharge'
+                                      : 'Services vidéo'}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isSearchPanelOpen) {
+                          setSearchQuery('');
+                          return;
+                        }
+                        setActiveCenterCategory(null);
+                      }}
+                      className="flex items-center gap-2 rounded-full bg-white/8 px-3 py-2 text-xs text-white/80 ring-1 ring-white/10 transition hover:bg-white/[0.14]"
+                    >
+                      <X className="h-4 w-4" />
+                      Fermer
+                    </button>
+                  </div>
+                )}
 
                 {openGameId === '2048' ? (
-                  <div className="relative h-[calc(100%-56px)] overflow-y-auto pr-1 pb-8">
+                  <div
+                    className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-auto pt-10 pb-4"
+                    role="region"
+                    aria-labelledby="game-2048-title"
+                  >
+                    <span id="game-2048-title" className="sr-only">
+                      2048
+                    </span>
                     <Game2048 />
                   </div>
                 ) : openGameId === 'snake' ? (
-                  <div className="relative flex h-[calc(100%-56px)] min-h-0 flex-col overflow-hidden pr-1">
+                  <div
+                    className="flex min-h-0 flex-1 flex-col overflow-hidden pt-10"
+                    role="region"
+                    aria-labelledby="game-snake-title"
+                  >
+                    <span id="game-snake-title" className="sr-only">
+                      Snake
+                    </span>
                     <SnakeGame />
                   </div>
                 ) : openGameId === 'memory' ? (
-                  <div className="relative flex h-[calc(100%-56px)] min-h-0 flex-col overflow-hidden pr-1">
+                  <div
+                    className="flex min-h-0 flex-1 flex-col overflow-hidden pt-10"
+                    role="region"
+                    aria-labelledby="game-memory-title"
+                  >
+                    <span id="game-memory-title" className="sr-only">
+                      Memory
+                    </span>
                     <MemoryGame />
                   </div>
                 ) : (
@@ -1608,7 +1625,7 @@ export default function TeslaFuturisticPortalConcept() {
               </div>
 
               <div
-                className={`relative overflow-hidden transition-all duration-300 ${isDockCollapsed ? 'max-h-0 opacity-0' : 'max-h-40 opacity-100'}`}
+                className={`relative overflow-hidden transition-all duration-300 ${isDockCollapsed ? 'max-h-0 opacity-0' : 'max-h-52 opacity-100'}`}
               >
                 {/* 1) Purpose:
                     - Contenu du dock développé : message invité, favoris (édition / glisser-déposer), ou vide.
@@ -1616,7 +1633,7 @@ export default function TeslaFuturisticPortalConcept() {
                     - `favoriteDockApps`: tous les favoris (recherche globale ne filtre pas le dock, pour ne pas corrompre le drag).
                     3) Logic flow:
                     - Visible uniquement quand le dock n'est pas réduit (`!isDockCollapsed`). */}
-                <div className="no-scrollbar dock-edge-fade min-h-[52px] pb-1">
+                <div className="no-scrollbar dock-edge-fade min-h-[52px] px-0.5 pb-2 pt-1">
                   {dockBannerMessage && (
                     <div
                       className="mb-2 rounded-[12px] bg-amber-500/15 px-3 py-2 text-xs leading-snug text-amber-100 ring-1 ring-amber-400/25"

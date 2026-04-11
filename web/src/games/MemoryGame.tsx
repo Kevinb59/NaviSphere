@@ -205,13 +205,14 @@ export function MemoryGame() {
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-3" tabIndex={-1}>
       {/* 4) Barre stats + nouvelle partie : même esprit que Snake / 2048 dans le panneau central. */}
+      {/* 4) Bandeau stats discret pour laisser le fond visible autour du tapis. */}
       <div className="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:flex-nowrap">
-        <div className="min-w-0 flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-3 sm:py-2.5">
-          <p className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px] sm:tracking-[0.2em]">Coups</p>
+        <div className="min-w-0 flex-1 rounded-xl border border-white/12 bg-black/25 px-2 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Coups</p>
           <p className="text-base font-semibold tabular-nums text-white sm:text-lg">{moves}</p>
         </div>
-        <div className="min-w-0 flex-1 rounded-[14px] border border-white/[0.08] bg-gradient-to-br from-white/[0.07] to-white/[0.02] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-3 sm:py-2.5">
-          <p className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px] sm:tracking-[0.2em]">Paires</p>
+        <div className="min-w-0 flex-1 rounded-xl border border-white/12 bg-black/25 px-2 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Paires</p>
           <p className="text-base font-semibold tabular-nums text-sky-200/95 sm:text-lg">
             {vanishedPairIds.size}/{PAIR_COUNT}
           </p>
@@ -219,7 +220,7 @@ export function MemoryGame() {
         <button
           type="button"
           onClick={reset}
-          className="shrink-0 rounded-[14px] border border-white/12 bg-white/[0.06] px-3 py-2.5 text-xs font-medium text-white transition hover:bg-white/[0.11] sm:px-4 sm:text-sm"
+          className="shrink-0 rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-black/40 sm:px-4 sm:text-sm"
         >
           Nouvelle partie
         </button>
@@ -227,7 +228,7 @@ export function MemoryGame() {
 
       <div
         ref={boardWrapRef}
-        className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1018]/90 to-[#0a0e14]/95 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:p-3"
+        className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/12 bg-black/22 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-[5px] sm:p-3"
       >
         <div className="flex h-full w-full items-center justify-center">
           <div

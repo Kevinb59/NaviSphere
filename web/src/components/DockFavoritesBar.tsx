@@ -67,27 +67,31 @@ function SortableDockTile({
 
   return (
     <div ref={setNodeRef} style={style} className="relative min-w-[122px] shrink-0">
-      {editMode && (
-        <button
-          type="button"
-          onPointerDownCapture={(event) => {
-            event.stopPropagation();
-          }}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onRemoveFavorite(app.favoriteKey);
-          }}
-          className="absolute -right-1 -top-1 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-rose-500/95 text-white shadow-md ring-1 ring-white/20 transition hover:bg-rose-400"
-          aria-label={`Retirer ${app.name} des favoris`}
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      )}
       <div
-        className={`rounded-[14px] ${editMode ? 'cursor-grab active:cursor-grabbing touch-none ring-1 ring-white/15' : ''}`}
+        className={`relative rounded-[14px] ${editMode ? 'cursor-grab active:cursor-grabbing touch-none ring-1 ring-white/15' : ''}`}
         {...(editMode ? { ...attributes, ...listeners } : {})}
       >
+        {/* 1) Purpose:
+            - Bouton retirer *à l’intérieur* de la tuile (plus en -top/-right) pour éviter le découpage par overflow-hidden du dock.
+            2) Key variables: `right-1.5 top-1.5` = coin sans dépasser du parent.
+            3) Logic flow: capture pointer pour ne pas déclencher le drag DnD. */}
+        {editMode && (
+          <button
+            type="button"
+            onPointerDownCapture={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onRemoveFavorite(app.favoriteKey);
+            }}
+            className="absolute right-1.5 top-1.5 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-rose-500/95 text-white shadow-md ring-1 ring-white/20 transition hover:bg-rose-400"
+            aria-label={`Retirer ${app.name} des favoris`}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
         {!editMode ? (
           <div
             onPointerDown={longPress.onPointerDown}
@@ -103,7 +107,7 @@ function SortableDockTile({
                   event.stopPropagation();
                 }
               }}
-              className="group flex min-w-[122px] flex-col items-center justify-center gap-2 rounded-[14px] bg-white/[0.085] p-3 ring-1 ring-white/10 backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/[0.11] hover:ring-white/20"
+              className="group flex min-w-[122px] flex-col items-center justify-center gap-2 rounded-[14px] bg-white/[0.085] p-3 ring-1 ring-white/10 backdrop-blur-xl transition hover:bg-white/[0.11] hover:ring-white/20 hover:shadow-[0_6px_20px_rgba(0,0,0,0.2)]"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/95 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
                 <img
@@ -172,7 +176,11 @@ export function DockFavoritesBar({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
       <SortableContext items={apps.map((a) => a.favoriteKey)} strategy={horizontalListSortingStrategy}>
-        <div className="no-scrollbar dock-edge-fade flex gap-3 overflow-x-auto pb-1">
+        {/* 1) Purpose:
+            - `py-2` : marge verticale pour que le survol / focus ne touche pas les bords du panneau (overflow du dock).
+            2) Key variables: scroll horizontal uniquement.
+            3) Logic flow: même liste de tuiles, zone un peu plus haute visuellement. */}
+        <div className="no-scrollbar dock-edge-fade flex gap-3 overflow-x-auto py-2">
           {apps.map((app) => (
             <SortableDockTile
               key={app.favoriteKey}
